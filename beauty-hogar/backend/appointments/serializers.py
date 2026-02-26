@@ -13,21 +13,38 @@ class TimeSlotSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class AppointmentSerializer(serializers.ModelSerializer):
-    client = UserSerializer(read_only=True)
-    service = ServiceSerializer(read_only=True)
-    time_slot = TimeSlotSerializer(read_only=True)
-    service_id = serializers.IntegerField(write_only=True)
-    time_slot_id = serializers.IntegerField(write_only=True)
-    total_price = serializers.ReadOnlyField()
-    
+    client_details = UserSerializer(source='client', read_only=True)
+    service_details = ServiceSerializer(source='service', read_only=True)
+    timeslot_details = TimeSlotSerializer(source='timeslot', read_only=True)
+
     class Meta:
         model = Appointment
         fields = [
-            'id', 'client', 'service', 'time_slot', 'service_id', 'time_slot_id',
-            'status', 'notes', 'admin_notes', 'created_at', 'updated_at', 
-            'whatsapp_notified', 'total_price'
+            'id', 'client', 'service', 'timeslot', 'status', 
+            'total_price', 'notes', 'created_at', 'updated_at',
+            'client_details', 'service_details', 'timeslot_details'
         ]
-        read_only_fields = ['created_at', 'updated_at', 'whatsapp_notified']
+        read_only_fields = ['total_price', 'created_at', 'updated_at']
+
+    def validate(self, data):
+        """
+        Validación a nivel de Serializer para evitar reservas inválidas.
+        """
+        timeslot = data.get('timeslot')
+        
+        # 1. Verificar si el slot está disponible (Solo al crear)
+        if not self.instance:  
+            if timeslot.status != 'available':
+                raise serializers.ValidationError(
+                    {"timeslot": "Lo sentimos, este horario ya no está disponible."}
+                )
+        
+        return data
+
+    def create(self, validated_data):
+        service = validated_data.get('service')
+        validated_data['total_price'] = service.price
+        return super().create(validated_data)
 
 class AppointmentCreateSerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,43 +1,59 @@
+import os
 from rest_framework import serializers
-from .models import User
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'phone', 'role', 'date_joined']
-        read_only_fields = ['id', 'role', 'date_joined']
+        fields = ('id', 'email', 'first_name', 'last_name', 'role', 'is_admin')
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=6)
-    password_confirm = serializers.CharField(write_only=True, min_length=6)
-    
+    password = serializers.CharField(write_only=True, min_length=8)
+    password_confirm = serializers.CharField(write_only=True)
+
     class Meta:
         model = User
-        fields = ['email', 'first_name', 'last_name', 'phone', 'password', 'password_confirm']
-    
+        fields = ('email', 'first_name', 'last_name', 'password', 'password_confirm')
+
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
-            raise serializers.ValidationError({"password": "Las contraseñas no coinciden"})
+            raise serializers.ValidationError({"password": "Las contraseñas no coinciden."})
         return attrs
-    
+
     def create(self, validated_data):
         validated_data.pop('password_confirm')
-        user = User.objects.create_user(**validated_data)
+        user = User.objects.create_user(**validated_data, role='client')
         return user
 
 class AdminRegistrationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=8)
+    password_confirm = serializers.CharField(write_only=True)
     secret_key = serializers.CharField(write_only=True)
-    password = serializers.CharField(write_only=True, min_length=6)
-    
+
     class Meta:
         model = User
-        fields = ['email', 'first_name', 'last_name', 'phone', 'password', 'secret_key']
-    
+        fields = ('email', 'first_name', 'last_name', 'password', 'password_confirm', 'secret_key')
+
     def validate(self, attrs):
-        if attrs.pop('secret_key') != 'BEAUTY_ADMIN_SECRET_2024':
-            raise serializers.ValidationError({"secret_key": "Clave secreta inválida"})
+        # Validación de contraseña
+        if attrs['password'] != attrs['password_confirm']:
+            raise serializers.ValidationError({"password": "Las contraseñas no coinciden."})
+        
+        # Validación de la clave secreta desde el .env
+        env_secret = os.getenv('BEAUTY_ADMIN_SECRET')
+        if attrs.pop('secret_key') != env_secret:
+            raise serializers.ValidationError({"secret_key": "Clave de administrador incorrecta."})
+            
         return attrs
-    
+
     def create(self, validated_data):
-        user = User.objects.create_user(**validated_data, is_admin=True, role='admin')
+        validated_data.pop('password_confirm')
+        user = User.objects.create_user(
+            **validated_data, 
+            role='admin',
+            is_staff=True,
+            is_admin=True
+        )
         return user
