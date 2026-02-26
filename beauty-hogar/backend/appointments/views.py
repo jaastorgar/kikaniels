@@ -65,7 +65,22 @@ class AppointmentListCreateView(generics.ListCreateAPIView):
         return Appointment.objects.filter(client=user)
     
     def perform_create(self, serializer):
-        serializer.save(client=self.request.user, status='pending')
+        # Obtener los IDs de los datos enviados
+        service_id = self.request.data.get('service_id')
+        time_slot_id = self.request.data.get('time_slot_id')
+        
+        # Obtener los objetos reales
+        from .models import Service, TimeSlot
+        service = Service.objects.get(id=service_id)
+        time_slot = TimeSlot.objects.get(id=time_slot_id)
+        
+        # Guardar con los objetos completos
+        serializer.save(
+            client=self.request.user,
+            service=service,
+            time_slot=time_slot,
+            status='pending'
+        )
 
 class AppointmentDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AppointmentSerializer
@@ -231,25 +246,34 @@ class BulkCreateTimeSlotsView(APIView):
     permission_classes = [IsAdminUser]
     
     def post(self, request):
-        date = request.data.get('date')
+        date_str = request.data.get('date')  # Formato: YYYY-MM-DD
         start_time = request.data.get('start_time')
         end_time = request.data.get('end_time')
         interval_minutes = int(request.data.get('interval_minutes', 60))
         
-        if not all([date, start_time, end_time]):
+        if not all([date_str, start_time, end_time]):
             return Response({'error': 'Fecha, hora inicio y hora fin son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
         
         from datetime import datetime, timedelta
         
-        current_time = datetime.strptime(f"{date} {start_time}", "%Y-%m-%d %H:%M")
-        end_datetime = datetime.strptime(f"{date} {end_time}", "%Y-%m-%d %H:%M")
+        # Parsear la fecha directamente del string YYYY-MM-DD
+        # Sin conversiones de zona horaria
+        try:
+            year, month, day = map(int, date_str.split('-'))
+        except ValueError:
+            return Response({'error': 'Formato de fecha inválido. Use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Crear datetime combinando fecha y hora
+        current_time = datetime.strptime(f"{date_str} {start_time}", "%Y-%m-%d %H:%M")
+        end_datetime = datetime.strptime(f"{date_str} {end_time}", "%Y-%m-%d %H:%M")
         
         created_slots = []
         while current_time < end_datetime:
             slot_end = current_time + timedelta(minutes=interval_minutes)
             
+            # Usar la fecha exacta del string original
             time_slot, created = TimeSlot.objects.get_or_create(
-                date=date,
+                date=date_str,  # Guardar el string exacto
                 start_time=current_time.time(),
                 defaults={
                     'end_time': slot_end.time(),
