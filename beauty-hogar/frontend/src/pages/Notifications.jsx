@@ -24,6 +24,26 @@ export default function Notifications() {
 
   useEffect(() => {
     fetchNotifications()
+
+    // CONEXIÓN EN TIEMPO REAL: Escuchar el canal de notificaciones
+    // Esto resuelve el dilema de que los avisos no llegaban al instante
+    const socket = new WebSocket(`ws://localhost:8000/ws/appointments/`)
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+      if (data.type === 'notification') {
+        // Alerta visual tipo Toast para feedback inmediato
+        toast.info(data.message, { 
+          icon: <Bell className="text-[#4A008B]" />,
+          duration: 5000 
+        })
+        // Recargamos la lista automáticamente para mostrar el mensaje nuevo
+        fetchNotifications()
+      }
+    }
+
+    // Limpieza al desmontar el componente para evitar fugas de memoria
+    return () => socket.close()
   }, [])
 
   const fetchNotifications = async () => {
@@ -41,13 +61,14 @@ export default function Notifications() {
 
   const markAsRead = async (id) => {
     try {
-      // Sincronizado con la ruta 'notifications/<int:pk>/read/' en urls.py
+      // SOLUCIÓN AL 404: Sincronizado con la acción 'read' definida en el backend
       await api.post(`appointments/notifications/${id}/read/`)
+      
       setNotifications(notifications.map(n => 
         n.id === id ? { ...n, is_read: true } : n
       ))
     } catch (error) {
-      toast.error('Error al actualizar')
+      toast.error('No se pudo marcar como leída')
     }
   }
 
@@ -57,7 +78,7 @@ export default function Notifications() {
       setNotifications(notifications.filter(n => n.id !== id))
       toast.success('Mensaje eliminado')
     } catch (error) {
-      toast.error('No se pudo eliminar')
+      toast.error('No se pudo eliminar la notificación')
     }
   }
 
@@ -76,7 +97,7 @@ export default function Notifications() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <Loader2 className="w-12 h-12 text-[#4A008B] animate-spin" />
-        <p className="text-[#555555] font-medium font-sans animate-pulse">Buscando tus avisos...</p>
+        <p className="text-[#555555] font-medium font-sans animate-pulse">Sincronizando tus avisos...</p>
       </div>
     )
   }
@@ -110,10 +131,9 @@ export default function Notifications() {
               className={`group relative p-6 rounded-[2.5rem] border-2 transition-all duration-500 flex items-start gap-6 ${
                 n.is_read 
                   ? 'bg-white border-[#e6e6e6] opacity-70' 
-                  : 'bg-white border-[#4A008B]/10 shadow-xl shadow-purple-900/5 ring-1 ring-[#4A008B]/5'
+                  : 'bg-white border-[#4A008B]/20 shadow-xl shadow-purple-900/5 ring-1 ring-[#4A008B]/5'
               }`}
             >
-              {/* Punto de notificación activa */}
               {!n.is_read && (
                 <div className="absolute top-8 right-8 w-2 h-2 bg-[#0AE8C6] rounded-full shadow-[0_0_12px_rgba(10,232,198,0.8)]" />
               )}
@@ -141,13 +161,11 @@ export default function Notifications() {
                 </div>
               </div>
 
-              {/* Acciones */}
               <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 {!n.is_read && (
                   <button 
                     onClick={() => markAsRead(n.id)}
                     className="p-3 text-[#4A008B] hover:bg-[#F3E8FF] rounded-xl transition-all"
-                    title="Marcar como leída"
                   >
                     <Check size={20} />
                   </button>
@@ -155,7 +173,6 @@ export default function Notifications() {
                 <button 
                   onClick={() => deleteNotification(n.id)}
                   className="p-3 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all"
-                  title="Eliminar"
                 >
                   <Trash2 size={20} />
                 </button>

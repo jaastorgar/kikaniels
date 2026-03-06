@@ -104,6 +104,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment.status = 'cancelled'
         appointment.save()
         return Response({'status': 'cita cancelada'})
+    
+    @action(detail=True, methods=['post'])
+    def complete(self, request, pk=None):
+        appointment = self.get_object()
+        appointment.status = 'completed'
+        appointment.save()
+        return Response({'status': 'cita completada'})
 
 # --- SISTEMA DE NOTIFICACIONES ---
 
