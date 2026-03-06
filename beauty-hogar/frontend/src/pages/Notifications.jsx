@@ -25,8 +25,8 @@ export default function Notifications() {
   useEffect(() => {
     fetchNotifications()
 
-    // CONEXIÓN EN TIEMPO REAL: Escuchar el canal de notificaciones
-    // Esto resuelve el dilema de que los avisos no llegaban al instante
+    // MEJORA: CONEXIÓN EN TIEMPO REAL
+    // Mantiene una línea abierta con el servidor para recibir avisos al instante
     const socket = new WebSocket(`ws://localhost:8000/ws/appointments/`)
 
     socket.onmessage = (event) => {
@@ -37,7 +37,7 @@ export default function Notifications() {
           icon: <Bell className="text-[#4A008B]" />,
           duration: 5000 
         })
-        // Recargamos la lista automáticamente para mostrar el mensaje nuevo
+        // Recarga automática de la lista para mostrar el mensaje nuevo
         fetchNotifications()
       }
     }
@@ -48,7 +48,7 @@ export default function Notifications() {
 
   const fetchNotifications = async () => {
     try {
-      // El backend filtra automáticamente las notificaciones del cliente logueado
+      // El backend filtra automáticamente las notificaciones del cliente autenticado
       const response = await api.get('appointments/notifications/')
       setNotifications(Array.isArray(response.data) ? response.data : [])
     } catch (error) {
@@ -61,7 +61,7 @@ export default function Notifications() {
 
   const markAsRead = async (id) => {
     try {
-      // SOLUCIÓN AL 404: Sincronizado con la acción 'read' definida en el backend
+      // SOLUCIÓN AL 404: Apunta al endpoint /read/ sincronizado con la vista del backend
       await api.post(`appointments/notifications/${id}/read/`)
       
       setNotifications(notifications.map(n => 
@@ -95,16 +95,18 @@ export default function Notifications() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 font-sans">
         <Loader2 className="w-12 h-12 text-[#4A008B] animate-spin" />
-        <p className="text-[#555555] font-medium font-sans animate-pulse">Sincronizando tus avisos...</p>
+        <p className="text-[#555555] font-medium animate-pulse text-sm uppercase tracking-widest">
+          Sincronizando avisos...
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 pb-20 font-sans pt-6">
-      {/* Header con Navegación */}
+    <div className="max-w-3xl mx-auto space-y-8 pb-20 font-sans pt-6 px-4">
+      {/* Header con Navegación y Estilo Beauty Hogar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button 
@@ -115,11 +117,11 @@ export default function Notifications() {
           </button>
           <div>
             <h1 className="text-3xl font-bold text-[#2C0140] font-tight tracking-tight leading-none">Notificaciones</h1>
-            <p className="text-[#555555] text-sm mt-1">Estado de tus citas y servicios</p>
+            <p className="text-[#555555] text-sm mt-1">Sigue el estado de tus servicios en vivo</p>
           </div>
         </div>
-        <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-[#F3E8FF] rounded-full text-[#4A008B] text-[10px] font-bold uppercase tracking-widest">
-           <Sparkles size={14} /> Centro de Avisos
+        <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-[#F3E8FF] rounded-full text-[#4A008B] text-[10px] font-bold uppercase tracking-widest border border-[#4A008B]/10">
+           <Sparkles size={14} className="text-[#0AE8C6]" /> Mis Avisos
         </div>
       </div>
 
@@ -134,6 +136,7 @@ export default function Notifications() {
                   : 'bg-white border-[#4A008B]/20 shadow-xl shadow-purple-900/5 ring-1 ring-[#4A008B]/5'
               }`}
             >
+              {/* Indicador de Mensaje Nuevo con el color Turquesa */}
               {!n.is_read && (
                 <div className="absolute top-8 right-8 w-2 h-2 bg-[#0AE8C6] rounded-full shadow-[0_0_12px_rgba(10,232,198,0.8)]" />
               )}
@@ -165,14 +168,16 @@ export default function Notifications() {
                 {!n.is_read && (
                   <button 
                     onClick={() => markAsRead(n.id)}
-                    className="p-3 text-[#4A008B] hover:bg-[#F3E8FF] rounded-xl transition-all"
+                    className="p-3 text-[#4A008B] hover:bg-[#F3E8FF] rounded-xl transition-all shadow-sm"
+                    title="Marcar como leída"
                   >
                     <Check size={20} />
                   </button>
                 )}
                 <button 
                   onClick={() => deleteNotification(n.id)}
-                  className="p-3 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all"
+                  className="p-3 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all shadow-sm"
+                  title="Eliminar aviso"
                 >
                   <Trash2 size={20} />
                 </button>
@@ -181,13 +186,14 @@ export default function Notifications() {
           ))}
         </div>
       ) : (
+        /* Estado vacío mejorado */
         <div className="bg-white border-2 border-dashed border-[#e6e6e6] rounded-[3rem] py-24 text-center">
-          <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-8">
+          <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
             <Bell className="text-gray-200" size={48} />
           </div>
-          <h3 className="text-2xl font-bold text-[#2C0140] font-tight">Sin avisos pendientes</h3>
+          <h3 className="text-2xl font-bold text-[#2C0140] font-tight tracking-tight">Bandeja de avisos limpia</h3>
           <p className="text-[#555555] text-sm max-w-xs mx-auto mt-2 font-medium">
-            Todo está al día. Te notificaremos cuando haya novedades en tus servicios.
+            No tienes avisos pendientes. Te notificaremos cuando haya novedades en tus citas.
           </p>
         </div>
       )}

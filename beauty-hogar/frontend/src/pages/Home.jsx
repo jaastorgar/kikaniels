@@ -8,107 +8,123 @@ import {
   Shield, 
   Sparkles, 
   ArrowRight,
-  CheckCircle2
+  CheckCircle2,
+  Users,
+  MapPin
 } from 'lucide-react'
 
 export default function Home() {
+  // Características con iconos y descripciones actualizadas para el concepto "Premium"
   const features = [
     {
       icon: Calendar,
-      title: 'Reserva 24/7',
-      description: 'Gestiona tu cita en segundos desde cualquier dispositivo.'
+      title: 'Reserva Inteligente',
+      description: 'Agenda en tiempo real con confirmación inmediata por WhatsApp y correo.'
     },
     {
       icon: Clock,
-      title: 'A Tu Ritmo',
-      description: 'Horarios flexibles que se adaptan a tu estilo de vida.'
+      title: 'Tu Tiempo, Tu Regla',
+      description: 'Bloquea horarios flexibles que se adaptan a tu apretada agenda diaria.'
     },
     {
       icon: Star,
-      title: 'Calidad Premium',
-      description: 'Productos y profesionales seleccionados bajo altos estándares.'
+      title: 'Resultados VIP',
+      description: 'Especialistas capacitadas con productos de alta gama para tu cuidado.'
     },
     {
-      icon: Shield,
-      title: 'Seguridad Total',
-      description: 'Atención profesional garantizada en la comodidad de tu hogar.'
+      icon: MapPin,
+      title: 'Donde tú estés',
+      description: 'Llevamos la experiencia del salón a la comodidad de tu living o habitación.'
     }
   ]
 
+  // Estadísticas que ahora usan el color Turquesa corporativo (#0AE8C6)
   const stats = [
-    { label: 'Clientes Felices', value: '500+' },
-    { label: 'Tratamientos', value: '25+' },
-    { label: 'Especialistas', value: '10+' }
+    { label: 'Servicios Realizados', value: '1.2k+' },
+    { label: 'Calificación Media', value: '4.9/5' },
+    { label: 'Profesionales Activas', value: '12+' }
   ]
 
   return (
-    <div className="space-y-20 pb-20 font-sans">
-      {/* Hero Section Premium */}
-      <section className="relative overflow-hidden rounded-[3rem] bg-gradient-to-br from-[#4A008B] via-[#7B1FA2] to-[#2C0140] text-white p-10 lg:p-20 shadow-2xl shadow-purple-900/20">
-        <div className="relative z-10 max-w-3xl space-y-8">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-[10px] font-bold uppercase tracking-[0.2em]">
-            <Sparkles size={14} className="text-[#0AE8C6]" />
-            Tu belleza, tu tiempo, tu hogar
+    <div className="space-y-24 pb-20 font-sans animate-in fade-in duration-700">
+      
+      {/* SECCIÓN HERO: Gradientes con colores morados corporativos */}
+      <section className="relative overflow-hidden rounded-[3.5rem] bg-gradient-to-br from-[#4A008B] via-[#7B1FA2] to-[#2C0140] text-white p-10 lg:p-24 shadow-2xl shadow-purple-900/30">
+        {/* Decoración de fondo premium */}
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-[#0AE8C6]/5 blur-[120px] rounded-full -mr-20" />
+        
+        <div className="relative z-10 max-w-4xl space-y-10">
+          <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-white/10 backdrop-blur-xl rounded-full border border-white/20 text-[10px] font-black uppercase tracking-[0.25em] animate-pulse">
+            <Sparkles size={16} className="text-[#0AE8C6]" />
+            La nueva era de la belleza a domicilio
           </div>
           
-          <h1 className="text-5xl lg:text-7xl font-bold font-tight leading-[0.9] tracking-tighter">
-            Especialistas en resaltar tu <span className="text-[#0AE8C6]">esencia</span>
+          <h1 className="text-6xl lg:text-8xl font-bold font-tight leading-[0.85] tracking-tighter">
+            Tu salón de <br /> 
+            belleza <span className="text-[#0AE8C6]">donde sea</span>
           </h1>
           
-          <p className="text-lg lg:text-xl text-purple-100 max-w-xl leading-relaxed font-medium">
-            Disfruta de una experiencia de salón profesional sin salir de casa. 
-            Agendamiento inteligente para personas que valoran su tiempo.
+          <p className="text-xl lg:text-2xl text-purple-100/90 max-w-2xl leading-relaxed font-medium">
+            Agendamiento 100% digital para personas que valoran la comodidad. 
+            Calidad profesional sin el estrés del tráfico ni las esperas.
           </p>
           
-          <div className="flex flex-wrap gap-5 pt-4">
+          <div className="flex flex-wrap gap-6 pt-6">
             <Link 
               to="/services" 
-              className="bg-[#0AE8C6] text-[#2C0140] px-10 py-4 rounded-2xl font-bold hover:scale-105 transition-all shadow-lg flex items-center gap-2"
+              className="bg-[#0AE8C6] text-[#2C0140] px-12 py-5 rounded-[1.5rem] font-black text-sm uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-cyan-500/20 flex items-center gap-3"
             >
-              Explorar Servicios
-              <ArrowRight size={18} />
+              Ver Tratamientos
+              <ArrowRight size={20} />
             </Link>
             <Link 
               to="/book" 
-              className="bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white px-10 py-4 rounded-2xl font-bold hover:bg-white/20 transition-all"
+              className="bg-white/10 backdrop-blur-md border-2 border-white/20 text-white px-12 py-5 rounded-[1.5rem] font-bold text-sm uppercase tracking-widest hover:bg-white/20 transition-all"
             >
-              Reservar Cita
+              Agendar Ahora
             </Link>
           </div>
         </div>
 
-        {/* Elemento Decorativo Flotante */}
-        <div className="absolute right-[-5%] top-[-10%] w-1/2 h-[120%] opacity-10 pointer-events-none rotate-12">
+        {/* Elemento Decorativo: Icono Scissors con opacidad baja */}
+        <div className="absolute right-[-10%] bottom-[-10%] w-2/3 h-full opacity-[0.03] pointer-events-none -rotate-12">
           <Scissors className="w-full h-full text-white" />
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="grid grid-cols-2 md:grid-cols-3 gap-8 px-4">
+      {/* SECCIÓN STATS: Enfoque en tipografía InterTight */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-12 px-6">
         {stats.map((stat, index) => (
-          <div key={index} className="text-center space-y-1">
-            <p className="text-4xl lg:text-5xl font-bold text-[#4A008B] font-tight">{stat.value}</p>
-            <p className="text-[#555555] text-xs font-bold uppercase tracking-widest">{stat.label}</p>
+          <div key={index} className="text-center group">
+            <p className="text-5xl lg:text-7xl font-bold text-[#4A008B] font-tight group-hover:scale-110 transition-transform duration-500">
+              {stat.value}
+            </p>
+            <div className="h-1 w-12 bg-[#0AE8C6] mx-auto my-4 rounded-full" />
+            <p className="text-[#555555] text-xs font-black uppercase tracking-[0.3em]">
+              {stat.label}
+            </p>
           </div>
         ))}
       </section>
 
-      {/* Features Grid */}
-      <section className="space-y-12">
-        <div className="text-center max-w-2xl mx-auto space-y-4">
-          <h2 className="text-3xl font-bold text-[#2C0140] font-tight tracking-tight">¿Por qué elegir Beauty Hogar?</h2>
-          <p className="text-[#555555] font-medium">Llevamos el bienestar a tu puerta con un sistema diseñado para tu comodidad.</p>
+      {/* GRID DE CARACTERÍSTICAS: Diseño de tarjetas "Soft" */}
+      <section className="space-y-16">
+        <div className="text-center max-w-2xl mx-auto space-y-6">
+          <h2 className="text-4xl lg:text-5xl font-bold text-[#2C0140] font-tight tracking-tight">¿Por qué Beauty Hogar?</h2>
+          <p className="text-[#555555] text-lg font-medium leading-relaxed italic">
+            "Redefinimos la experiencia de autocuidado combinando tecnología y calidez humana."
+          </p>
         </div>
         
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           {features.map((feature, index) => {
             const Icon = feature.icon
             return (
-              <div key={index} className="bg-white p-8 rounded-[2.5rem] border border-[#e6e6e6] hover:shadow-xl transition-all group hover:-translate-y-1">
-                <div className="w-14 h-14 bg-[#F3E8FF] rounded-2xl flex items-center justify-center mb-6 group-hover:bg-[#4A008B] transition-colors">
-                  <Icon className="w-6 h-6 text-[#4A008B] group-hover:text-white" />
+              <div key={index} className="bg-white p-10 rounded-[3rem] border border-[#e6e6e6] hover:border-[#4A008B]/20 hover:shadow-2xl transition-all group hover:-translate-y-2 relative overflow-hidden">
+                <div className="w-16 h-16 bg-[#F3E8FF] rounded-2xl flex items-center justify-center mb-8 group-hover:bg-[#4A008B] transition-all duration-500 transform group-hover:rotate-[360deg]">
+                  <Icon className="w-8 h-8 text-[#4A008B] group-hover:text-white" />
                 </div>
-                <h3 className="font-bold text-[#2C0140] mb-3 text-lg font-tight">{feature.title}</h3>
+                <h3 className="font-bold text-[#2C0140] mb-4 text-xl font-tight leading-none">{feature.title}</h3>
                 <p className="text-sm text-[#555555] leading-relaxed font-medium">{feature.description}</p>
               </div>
             )
@@ -116,30 +132,32 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA Final Empoderador */}
-      <section className="relative bg-[#2C0140] rounded-[3rem] p-10 lg:p-20 text-center overflow-hidden shadow-2xl">
-        <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
-            <div className="absolute top-10 left-10 w-40 h-40 border-8 border-[#0AE8C6] rounded-full" />
-            <div className="absolute bottom-10 right-10 w-60 h-60 border-8 border-[#4A008B] rounded-full" />
+      {/* CTA FINAL: Impacto visual máximo */}
+      <section className="relative bg-[#2C0140] rounded-[4rem] p-12 lg:p-24 text-center overflow-hidden shadow-2xl">
+        <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-0 left-10 w-64 h-64 border-[20px] border-[#0AE8C6] rounded-full -translate-y-1/2" />
+            <div className="absolute bottom-0 right-10 w-80 h-80 border-[20px] border-[#4A008B] rounded-full translate-y-1/2" />
         </div>
 
-        <div className="relative z-10 max-w-2xl mx-auto space-y-8">
-          <h2 className="text-3xl lg:text-5xl font-bold text-white font-tight leading-tight">
-            ¿Lista para tu momento <br /> de desconexión?
+        <div className="relative z-10 max-w-3xl mx-auto space-y-10">
+          <h2 className="text-4xl lg:text-6xl font-bold text-white font-tight leading-[1.1] tracking-tighter">
+            Únete a la revolución de <br /> 
+            la belleza inteligente
           </h2>
-          <p className="text-purple-100 text-lg font-medium">
-            Únete a nuestra comunidad de clientes que ya transformaron su rutina de cuidado personal.
+          <p className="text-purple-100/80 text-lg font-medium">
+            Más de 500 clientes en Santiago ya confían en nuestro sistema de agendamiento 
+            para sus momentos de desconexión.
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-8 pt-4">
             <Link 
               to="/book" 
-              className="w-full sm:w-auto px-12 py-5 bg-[#0AE8C6] text-[#2C0140] font-bold rounded-2xl hover:scale-105 transition-transform shadow-lg shadow-cyan-900/20"
+              className="w-full sm:w-auto px-16 py-6 bg-[#0AE8C6] text-[#2C0140] font-black text-sm uppercase tracking-widest rounded-[1.5rem] hover:scale-105 transition-all shadow-2xl shadow-cyan-900/40"
             >
-              Agendar Cita Ahora
+              Reservar Cita Ahora
             </Link>
-            <div className="flex items-center gap-2 text-white/80 text-sm font-bold uppercase tracking-tighter">
-              <CheckCircle2 size={18} className="text-[#0AE8C6]" />
-              Cancelación flexible
+            <div className="flex items-center gap-3 text-white/90 text-sm font-bold uppercase tracking-widest">
+              <CheckCircle2 size={24} className="text-[#0AE8C6]" />
+              Sin cargos por cancelación
             </div>
           </div>
         </div>
