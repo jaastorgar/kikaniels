@@ -3,7 +3,8 @@ from .models import Service, TimeSlot, Appointment, Notification
 
 @admin.register(Service)
 class ServiceAdmin(admin.ModelAdmin):
-    list_display = ['name', 'price', 'duration_minutes', 'is_active']
+    # Corregido: 'duration_minutes' -> 'duration'
+    list_display = ['name', 'price', 'duration', 'is_active']
     list_filter = ['is_active']
     search_fields = ['name']
 
@@ -15,12 +16,14 @@ class TimeSlotAdmin(admin.ModelAdmin):
 
 @admin.register(Appointment)
 class AppointmentAdmin(admin.ModelAdmin):
-    list_display = ['id', 'client', 'service', 'time_slot', 'status', 'created_at']
+    # Corregido: 'time_slot' -> 'timeslot'
+    list_display = ['id', 'client', 'service', 'timeslot', 'status', 'created_at']
     list_filter = ['status', 'created_at']
     search_fields = ['client__email', 'client__first_name', 'service__name']
     date_hierarchy = 'created_at'
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
-    list_display = ['user', 'appointment', 'is_read', 'created_at']
+    # Añadí 'message' para que sea más fácil leer las notificaciones desde el panel
+    list_display = ['user', 'appointment', 'message', 'is_read', 'created_at']
     list_filter = ['is_read', 'created_at']

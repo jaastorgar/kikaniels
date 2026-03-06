@@ -6,22 +6,34 @@ from django.db.models import Count, Sum, Q
 from django.utils import timezone
 from datetime import datetime, timedelta
 
-from .models import Service, TimeSlot, Appointment
-from .serializers import ServiceSerializer, TimeSlotSerializer, AppointmentSerializer
+from .models import Service, TimeSlot, Appointment, Notification
+from .serializers import (
+    ServiceSerializer, 
+    TimeSlotSerializer, 
+    AppointmentSerializer, 
+    NotificationSerializer
+)
 
-# --- PERMISOS PERSONALIZADOS ---
+# --- PERMISOS ---
 class IsAdminUser(permissions.BasePermission):
+    """Permiso para usuarios con rol admin."""
     def has_permission(self, request, view):
         return request.user.is_authenticated and request.user.role == 'admin'
 
-# --- VIEWSETS OPTIMIZADOS ---
+# --- VIEWSETS CON AISLAMIENTO DE DATOS ---
 
 class ServiceViewSet(viewsets.ModelViewSet):
-    """
-    CRUD de servicios. Solo admins pueden crear/editar/borrar.
-    """
-    queryset = Service.objects.all()
     serializer_class = ServiceSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated and user.role == 'admin':
+            # MULTI-TENANCY: El admin solo ve SUS servicios
+            return Service.objects.filter(provider=user)
+        return Service.objects.filter(is_active=True)
+
+    def perform_create(self, serializer):
+        serializer.save(provider=self.request.user)
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -29,49 +41,114 @@ class ServiceViewSet(viewsets.ModelViewSet):
         return [permissions.AllowAny()]
 
 class TimeSlotViewSet(viewsets.ModelViewSet):
-    """
-    Gestión de horarios.
-    """
-    queryset = TimeSlot.objects.all()
     serializer_class = TimeSlotSerializer
 
     def get_queryset(self):
-        # Opcional: Filtrar solo slots disponibles para clientes
-        if self.request.user.is_authenticated and self.request.user.role == 'admin':
-            return TimeSlot.objects.all()
-        return TimeSlot.objects.filter(status='available', date__gte=timezone.now().date())
+        user = self.request.user
+        
+        # 1. Si es Admin, ve su propia agenda de gestión
+        if user.is_authenticated and user.role == 'admin':
+            return TimeSlot.objects.filter(provider=user)
+        
+        # 2. FILTRADO PARA CLIENTES (Solución definitiva a la consecuencia de agenda)
+        queryset = TimeSlot.objects.filter(status='available')
+
+        # Capturamos los parámetros enviados desde BookAppointment.jsx
+        date = self.request.query_params.get('date')
+        provider_id = self.request.query_params.get('provider_id')
+
+        # FILTRO DE FECHA: Si el cliente eligió un día en el calendario, solo mostramos ese día
+        if date:
+            queryset = queryset.filter(date=date)
+        else:
+            # Por defecto, solo mostrar de hoy en adelante
+            queryset = queryset.filter(date__gte=timezone.now().date())
+        
+        # FILTRO DE PROFESIONAL: Solo mostramos los horarios del dueño del servicio
+        if provider_id:
+            queryset = queryset.filter(provider_id=provider_id)
+            
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(provider=self.request.user)
 
 class AppointmentViewSet(viewsets.ModelViewSet):
-    """
-    Gestión de citas con optimización de consultas SQL.
-    """
     serializer_class = AppointmentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
-        # OPTIMIZACIÓN: select_related realiza un JOIN en SQL para traer 
-        # cliente, servicio y horario en UNA SOLA consulta.
         queryset = Appointment.objects.select_related(
-            'client', 
-            'service', 
-            'timeslot'
-        ).order_class('-created_at')
+            'client', 'service', 'timeslot'
+        ).order_by('-created_at')
 
         if user.role == 'admin':
-            return queryset
+            # MULTI-TENANCY: El admin solo ve citas de SUS servicios
+            return queryset.filter(service__provider=user)
         return queryset.filter(client=user)
 
     def perform_create(self, serializer):
-        # Al crear, el precio se toma automáticamente del servicio (lógica en serializer/model)
         serializer.save(client=self.request.user)
 
-# --- VISTAS ESPECIALIZADAS ---
+    @action(detail=True, methods=['post'])
+    def confirm(self, request, pk=None):
+        appointment = self.get_object()
+        appointment.status = 'confirmed'
+        appointment.save()
+        return Response({'status': 'cita confirmada'})
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        appointment = self.get_object()
+        appointment.status = 'cancelled'
+        appointment.save()
+        return Response({'status': 'cita cancelada'})
+
+# --- SISTEMA DE NOTIFICACIONES ---
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Cada usuario ve solo sus notificaciones
+        return Notification.objects.filter(user=self.request.user).order_by('-created_at')
+
+    @action(detail=True, methods=['post'])
+    def read(self, request, pk=None):
+        """Sincronizado con Notifications.jsx."""
+        notification = self.get_object()
+        notification.is_read = True
+        notification.save()
+        return Response({'status': 'leída'})
+
+class NotificationUnreadCountView(APIView):
+    """Contador dinámico para AdminHeader.jsx."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        count = Notification.objects.filter(user=request.user, is_read=False).count()
+        return Response({'unread_count': count})
+
+# --- DASHBOARD Y UTILIDADES ---
+
+class AdminDashboardStatsView(APIView):
+    """Resumen operativo del panel."""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        stats = Appointment.objects.filter(service__provider=request.user).aggregate(
+            total_appointments=Count('id'),
+            total_revenue=Sum('total_price', default=0),
+            pending_appointments=Count('id', filter=Q(status='pending')),
+            confirmed_appointments=Count('id', filter=Q(status='confirmed')),
+            total_clients=Count('client', distinct=True)
+        )
+        return Response(stats)
 
 class BulkCreateTimeSlotsView(APIView):
-    """
-    Creación masiva de horarios para el administrador.
-    """
+    """Creación masiva de horarios para un profesional."""
     permission_classes = [IsAdminUser]
 
     def post(self, request):
@@ -79,9 +156,6 @@ class BulkCreateTimeSlotsView(APIView):
         start_time_str = request.data.get('start_time')
         end_time_str = request.data.get('end_time')
         interval = int(request.data.get('interval', 60))
-
-        if not all([date_str, start_time_str, end_time_str]):
-            return Response({"error": "Faltan datos requeridos"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             date = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -91,45 +165,15 @@ class BulkCreateTimeSlotsView(APIView):
             created_slots = 0
             while current_time + timedelta(minutes=interval) <= end_time:
                 slot_end = current_time + timedelta(minutes=interval)
-                
-                # Evitar duplicados exactos
-                if not TimeSlot.objects.filter(date=date, start_time=current_time.time()).exists():
-                    TimeSlot.objects.create(
-                        date=date,
-                        start_time=current_time.time(),
-                        end_time=slot_end.time()
-                    )
-                    created_slots += 1
-                
+                TimeSlot.objects.create(
+                    provider=request.user,
+                    date=date,
+                    start_time=current_time.time(),
+                    end_time=slot_end.time()
+                )
+                created_slots += 1
                 current_time = slot_end
 
-            return Response({"message": f"Se crearon {created_slots} horarios exitosamente."}, status=status.HTTP_201_CREATED)
+            return Response({"message": f"Se crearon {created_slots} horarios."}, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-class AdminDashboardStatsView(APIView):
-    """
-    Estadísticas rápidas para el Dashboard administrativo.
-    """
-    permission_classes = [IsAdminUser]
-
-    def get(self, request):
-        # Agregaciones eficientes directas en la base de datos
-        stats = Appointment.objects.aggregate(
-            total_appointments=Count('id'),
-            total_revenue=Sum('total_price', default=0),
-            pending_appointments=Count('id', filter=Q(status='pending')),
-            confirmed_appointments=Count('id', filter=Q(status='confirmed')),
-            cancelled_appointments=Count('id', filter=Q(status='cancelled'))
-        )
-        
-        # Próximas citas (hoy)
-        today = timezone.now().date()
-        upcoming = Appointment.objects.filter(
-            timeslot__date=today, 
-            status='confirmed'
-        ).select_related('client', 'service', 'timeslot').count()
-
-        stats['upcoming_today'] = upcoming
-        
-        return Response(stats)

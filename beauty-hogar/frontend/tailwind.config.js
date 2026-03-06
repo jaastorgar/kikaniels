@@ -7,34 +7,37 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Tu paleta de morados corporativa
         primary: {
-          50: '#fdf2f8',
-          100: '#fce7f3',
-          200: '#fbcfe8',
-          300: '#f9a8d4',
-          400: '#f472b6',
-          500: '#ec4899',
-          600: '#db2777',
-          700: '#be185d',
-          800: '#9d174d',
-          900: '#831843',
+          DEFAULT: '#4A008B', // --primary-purple
+          dark: '#38006B',    // --hover-dark-purple
+          light: '#F3E8FF',   // --light-purple
         },
         secondary: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a',
-        }
+          DEFAULT: '#7B1FA2', // --secondary-purple
+          light: '#E0B3FF',   // --hover-light-purple
+        },
+        // Tu color de acento turquesa
+        accent: {
+          DEFAULT: '#0AE8C6', // --turquoise
+        },
+        // Colores de interfaz y texto
+        dark: '#343A40',      // --dark-text
+        muted: '#555555',     // --muted-text
+        header: '#2C0140',    // --header-footer-bg
+        border: '#e6e6e6',    // --border-color
       },
       fontFamily: {
-        sans: ['Poppins', 'sans-serif'],
+        // Tus tipografías específicas
+        sans: ['HankenGrotesk', 'sans-serif'], // Regular y Light
+        tight: ['InterTight', 'sans-serif'],   // Bold y Light
       },
+      boxShadow: {
+        // Tus sombras personalizadas
+        'soft': '0 2px 10px rgba(0,0,0,.08)',  // --shadow-1
+        'medium': '0 8px 22px rgba(0,0,0,.14)', // --shadow-2
+        'high': '0 18px 44px rgba(0,0,0,.22)',  // --shadow-3
+      }
     },
   },
   plugins: [],

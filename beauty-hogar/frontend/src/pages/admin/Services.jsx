@@ -1,16 +1,20 @@
 import { useState, useEffect } from 'react'
-import { Plus, Edit2, Trash2, X, Scissors } from 'lucide-react'
+import { Plus, Edit2, Trash2, X, Scissors, Loader2, DollarSign, Clock } from 'lucide-react'
+import { toast } from 'sonner'
+import api from "../../api/axios" 
 
 export default function AdminServices() {
   const [services, setServices] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingService, setEditingService] = useState(null)
+  
+  // Sincronizado con models.py: usamos 'duration' en lugar de 'duration_minutes'
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     price: '',
-    duration_minutes: '',
+    duration: '', 
     is_active: true
   })
 
@@ -20,68 +24,75 @@ export default function AdminServices() {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/appointments/services/', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
-      const data = await response.json()
-      setServices(data)
-      setLoading(false)
+      const response = await api.get('appointments/services/')
+      setServices(response.data)
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Error al cargar servicios:', error)
+      toast.error('Error al conectar con el servidor')
+    } finally {
       setLoading(false)
     }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const url = editingService 
-      ? `http://localhost:8000/api/appointments/services/${editingService.id}/`
-      : 'http://localhost:8000/api/appointments/services/'
     
-    const method = editingService ? 'PUT' : 'POST'
+    // Validación de tipos de datos antes del envío
+    const priceValue = parseFloat(formData.price)
+    const durationValue = parseInt(formData.duration)
 
+    if (isNaN(priceValue) || isNaN(durationValue)) {
+      return toast.error('Precio y duración deben ser valores numéricos.')
+    }
+
+    // El payload ahora usa 'duration' para coincidir con el modelo Django
+    const payload = {
+      name: formData.name,
+      description: formData.description,
+      price: priceValue,
+      duration: durationValue, 
+      is_active: formData.is_active
+    }
+
+    const path = editingService 
+      ? `appointments/services/${editingService.id}/`
+      : 'appointments/services/'
+    
     try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          ...formData,
-          price: parseInt(formData.price),
-          duration_minutes: parseInt(formData.duration_minutes)
-        })
-      })
-
-      if (response.ok) {
-        setShowModal(false)
-        setEditingService(null)
-        setFormData({ name: '', description: '', price: '', duration_minutes: '', is_active: true })
-        fetchServices()
+      if (editingService) {
+        await api.put(path, payload)
+        toast.success('Servicio actualizado')
+      } else {
+        await api.post(path, payload)
+        toast.success('Servicio creado exitosamente')
       }
+
+      setShowModal(false)
+      setEditingService(null)
+      setFormData({ name: '', description: '', price: '', duration: '', is_active: true })
+      fetchServices()
     } catch (error) {
-      console.error('Error:', error)
+      const serverErrors = error.response?.data
+      if (serverErrors && typeof serverErrors === 'object') {
+        const messages = Object.entries(serverErrors)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join(' | ')
+        toast.error(`Error de validación: ${messages}`)
+      } else {
+        toast.error('Error al procesar la solicitud.')
+      }
+      console.error('Detalle error 400:', serverErrors)
     }
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('¿Estás seguro de eliminar este servicio?')) return
-    
+    if (!confirm('¿Seguro que deseas eliminar este servicio del catálogo?')) return
     try {
-      const response = await fetch(`http://localhost:8000/api/appointments/services/${id}/`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
-      if (response.ok) {
-        fetchServices()
-      }
+      await api.delete(`appointments/services/${id}/`)
+      toast.success('Servicio eliminado')
+      fetchServices()
     } catch (error) {
-      console.error('Error:', error)
+      toast.error('No se puede eliminar un servicio que tiene citas asociadas.')
     }
   }
 
@@ -91,7 +102,7 @@ export default function AdminServices() {
       name: service.name,
       description: service.description,
       price: service.price,
-      duration_minutes: service.duration_minutes,
+      duration: service.duration, // Sincronizado con models.py
       is_active: service.is_active
     })
     setShowModal(true)
@@ -99,66 +110,60 @@ export default function AdminServices() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <Loader2 className="w-12 h-12 text-[#4A008B] animate-spin" />
+        <p className="text-[#555555] font-medium tracking-tight">Sincronizando con base de datos...</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Servicios</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#2C0140]">Catálogo de Servicios</h1>
+          <p className="text-[#555555] text-sm font-medium">Administración de la oferta Beaty Hogar</p>
+        </div>
+        
         <button
           onClick={() => {
             setEditingService(null)
-            setFormData({ name: '', description: '', price: '', duration_minutes: '', is_active: true })
+            setFormData({ name: '', description: '', price: '', duration: '', is_active: true })
             setShowModal(true)
           }}
-          className="btn-primary flex items-center gap-2"
+          className="px-6 py-2.5 bg-[#4A008B] text-white rounded-xl hover:bg-[#38006B] transition-all flex items-center gap-2 font-bold text-sm shadow-lg shadow-purple-900/10"
         >
           <Plus className="w-5 h-5" />
-          Nuevo Servicio
+          Añadir Servicio
         </button>
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {services.map((service) => (
-          <div key={service.id} className="card card-hover">
+          <div key={service.id} className="bg-white p-6 rounded-2xl border border-[#e6e6e6] group hover:shadow-xl hover:border-[#4A008B] transition-all duration-300">
             <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                <Scissors className="w-6 h-6 text-primary-600" />
+              <div className="w-12 h-12 bg-[#F3E8FF] rounded-2xl flex items-center justify-center border border-[#4A008B]/10 transition-colors group-hover:bg-[#4A008B]">
+                <Scissors className="w-6 h-6 text-[#4A008B] group-hover:text-white" />
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => openEditModal(service)}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                >
+              <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => openEditModal(service)} className="p-2 text-[#4A008B] hover:bg-[#F3E8FF] rounded-lg transition-colors">
                   <Edit2 className="w-4 h-4" />
                 </button>
-                <button
-                  onClick={() => handleDelete(service.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                >
+                <button onClick={() => handleDelete(service.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-colors">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            <h3 className="font-semibold text-gray-800 text-lg mb-2">{service.name}</h3>
-            <p className="text-gray-600 text-sm mb-4 line-clamp-2">{service.description}</p>
+            <h3 className="text-lg font-bold text-[#2C0140] mb-2">{service.name}</h3>
+            <p className="text-[#555555] text-xs mb-6 line-clamp-2 leading-relaxed">{service.description}</p>
 
-            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-              <span className="text-2xl font-bold text-primary-600">${service.price.toLocaleString()}</span>
-              <span className="text-sm text-gray-500">{service.duration_minutes} min</span>
-            </div>
-
-            <div className="mt-3">
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                service.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-              }`}>
-                {service.is_active ? 'Activo' : 'Inactivo'}
-              </span>
+            <div className="flex items-center justify-between pt-4 border-t border-[#e6e6e6]">
+              <span className="text-xl font-bold text-[#4A008B]">${parseFloat(service.price).toLocaleString()}</span>
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#555555] uppercase tracking-wider">
+                <Clock className="w-3.5 h-3.5 text-[#0AE8C6]" />
+                {service.duration} min
+              </div>
             </div>
           </div>
         ))}
@@ -166,88 +171,64 @@ export default function AdminServices() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-800">
-                {editingService ? 'Editar Servicio' : 'Nuevo Servicio'}
-              </h3>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 bg-[#2C0140]/60 flex items-center justify-center p-4 z-[60] backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-white/10">
+            <div className="flex items-center justify-between p-6 border-b border-[#e6e6e6] bg-[#F3E8FF]/30">
+              <h3 className="text-xl font-bold text-[#2C0140]">{editingService ? 'Modificar' : 'Nuevo'} Servicio</h3>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-white rounded-full transition-colors">
+                <X className="w-5 h-5 text-[#2C0140]" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                <label className="block text-[10px] font-bold text-[#555555] uppercase tracking-widest mb-1.5">Nombre</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="input-field"
+                  className="w-full px-4 py-2.5 border border-[#e6e6e6] rounded-xl focus:ring-2 focus:ring-[#4A008B] outline-none text-sm"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                <label className="block text-[10px] font-bold text-[#555555] uppercase tracking-widest mb-1.5">Descripción</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="input-field"
-                  rows={3}
+                  className="w-full px-4 py-2.5 border border-[#e6e6e6] rounded-xl focus:ring-2 focus:ring-[#4A008B] outline-none text-sm"
+                  rows={2}
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Precio</label>
+                  <label className="block text-[10px] font-bold text-[#555555] uppercase tracking-widest mb-1.5">Precio ($)</label>
                   <input
                     type="number"
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className="input-field"
+                    className="w-full px-4 py-2.5 border border-[#e6e6e6] rounded-xl outline-none text-sm"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Duración (min)</label>
+                  <label className="block text-[10px] font-bold text-[#555555] uppercase tracking-widest mb-1.5">Duración (min)</label>
                   <input
                     type="number"
-                    value={formData.duration_minutes}
-                    onChange={(e) => setFormData({ ...formData, duration_minutes: e.target.value })}
-                    className="input-field"
+                    value={formData.duration} 
+                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-[#e6e6e6] rounded-xl outline-none text-sm"
                     required
                   />
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="is_active"
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="w-4 h-4 text-primary-600 rounded"
-                />
-                <label htmlFor="is_active" className="text-sm text-gray-700">Servicio activo</label>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 btn-secondary"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 btn-primary"
-                >
-                  {editingService ? 'Guardar Cambios' : 'Crear Servicio'}
-                </button>
+              <div className="flex gap-3 pt-6">
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2.5 font-bold text-[#555555] hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
+                <button type="submit" className="flex-1 py-2.5 bg-[#4A008B] text-white font-bold rounded-xl shadow-lg">Guardar</button>
               </div>
             </form>
           </div>

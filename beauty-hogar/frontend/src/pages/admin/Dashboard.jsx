@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { 
   Calendar, 
-  Users, 
   DollarSign, 
   Clock, 
   TrendingUp, 
   AlertCircle,
   CheckCircle,
-  XCircle,
-  RefreshCw
+  ArrowUpRight,
+  Loader2,
+  Users
 } from 'lucide-react'
+import api from "../../api/axios"
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null)
@@ -18,174 +19,116 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchStats()
-    fetchRecentAppointments()
+    const loadDashboardData = async () => {
+      try {
+        // Ejecutamos ambas peticiones en paralelo para mayor velocidad
+        const [statsRes, appointmentsRes] = await Promise.all([
+          api.get('appointments/dashboard/stats/'),
+          api.get('appointments/')
+        ])
+        setStats(statsRes.data)
+        // Tomamos solo las 5 citas más recientes para el resumen
+        setRecentAppointments(Array.isArray(appointmentsRes.data) ? appointmentsRes.data.slice(0, 5) : [])
+      } catch (error) {
+        console.error("Error cargando dashboard:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadDashboardData()
   }, [])
-
-  const fetchStats = async () => {
-    try {
-      const response = await fetch('http://localhost:8000/api/appointments/dashboard/stats/', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
-      const data = await response.json()
-      setStats(data)
-    } catch (error) {
-      console.error('Error:', error)
-    }
-  }
-
-  const fetchRecentAppointments = async () => {
-    try {
-      const response = await fetch('http://localhost:8000/api/appointments/?limit=5', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
-      const data = await response.json()
-      setRecentAppointments(data)
-      setLoading(false)
-    } catch (error) {
-      console.error('Error:', error)
-      setLoading(false)
-    }
-  }
 
   const getStatusColor = (status) => {
     const colors = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      confirmed: 'bg-green-100 text-green-800',
-      rescheduled: 'bg-blue-100 text-blue-800',
-      cancelled: 'bg-red-100 text-red-800',
-      completed: 'bg-gray-100 text-gray-800'
+      pending: 'bg-yellow-50 text-yellow-700 border-yellow-100',
+      confirmed: 'bg-green-50 text-green-700 border-green-100',
+      rescheduled: 'bg-blue-50 text-blue-700 border-blue-100',
+      cancelled: 'bg-red-50 text-red-700 border-red-100',
+      completed: 'bg-gray-100 text-gray-600 border-gray-200'
     }
     return colors[status] || colors.pending
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <Loader2 className="w-12 h-12 text-[#4A008B] animate-spin" />
+        <p className="text-[#555555] font-medium font-sans">Abriendo panel de Beauty Hogar...</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-        <p className="text-gray-600">Resumen de tu negocio</p>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="card bg-gradient-to-br from-primary-500 to-primary-600 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-primary-100 text-sm mb-1">Total Citas</p>
-              <p className="text-3xl font-bold">{stats?.total_appointments || 0}</p>
-            </div>
-            <Calendar className="w-10 h-10 text-primary-200" />
-          </div>
-        </div>
-
-        <div className="card bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-yellow-100 text-sm mb-1">Pendientes</p>
-              <p className="text-3xl font-bold">{stats?.pending_appointments || 0}</p>
-            </div>
-            <AlertCircle className="w-10 h-10 text-yellow-200" />
-          </div>
-        </div>
-
-        <div className="card bg-gradient-to-br from-green-500 to-green-600 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-100 text-sm mb-1">Confirmadas</p>
-              <p className="text-3xl font-bold">{stats?.confirmed_appointments || 0}</p>
-            </div>
-            <CheckCircle className="w-10 h-10 text-green-200" />
-          </div>
-        </div>
-
-        <div className="card bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-100 text-sm mb-1">Ingresos</p>
-              <p className="text-3xl font-bold">${stats?.total_revenue?.toLocaleString() || 0}</p>
-            </div>
-            <DollarSign className="w-10 h-10 text-purple-200" />
-          </div>
+    <div className="space-y-8 font-sans pb-10">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-[#2C0140] font-tight tracking-tight">Panel de Control</h1>
+          <p className="text-[#555555] text-sm">Resumen operativo y métricas en tiempo real</p>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid md:grid-cols-3 gap-4">
-        <Link to="/admin/appointments" className="card card-hover flex items-center gap-4">
-          <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-            <Calendar className="w-6 h-6 text-primary-600" />
+      {/* Métricas con Colores Corporativos */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { label: 'Citas Totales', val: stats?.total_appointments || 0, icon: Calendar, color: 'from-[#4A008B] to-[#2C0140]' },
+          { label: 'Ingresos', val: `$${(stats?.total_revenue || 0).toLocaleString()}`, icon: DollarSign, color: 'from-[#0AE8C6] to-[#4A008B]' },
+          { label: 'Pendientes', val: stats?.pending_appointments || 0, icon: AlertCircle, color: 'from-orange-400 to-red-500' },
+          { label: 'Clientes', val: stats?.total_clients || 0, icon: Users, color: 'from-[#7B1FA2] to-[#4A008B]' }
+        ].map((s, i) => (
+          <div key={i} className={`p-6 rounded-[2rem] bg-gradient-to-br ${s.color} text-white shadow-xl shadow-purple-900/10`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest mb-1">{s.label}</p>
+                <p className="text-3xl font-bold font-tight">{s.val}</p>
+              </div>
+              <s.icon className="w-8 h-8 opacity-30" />
+            </div>
           </div>
-          <div>
-            <h3 className="font-semibold text-gray-800">Gestionar Citas</h3>
-            <p className="text-sm text-gray-600">Ver y administrar reservas</p>
-          </div>
-        </Link>
-
-        <Link to="/admin/time-slots" className="card card-hover flex items-center gap-4">
-          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-            <Clock className="w-6 h-6 text-blue-600" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-800">Horarios</h3>
-            <p className="text-sm text-gray-600">Configurar disponibilidad</p>
-          </div>
-        </Link>
-
-        <Link to="/admin/services" className="card card-hover flex items-center gap-4">
-          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-            <TrendingUp className="w-6 h-6 text-green-600" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-800">Servicios</h3>
-            <p className="text-sm text-gray-600">Administrar servicios</p>
-          </div>
-        </Link>
+        ))}
       </div>
 
-      {/* Recent Appointments */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-800">Citas Recientes</h2>
-          <Link to="/admin/appointments" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-            Ver todas
+      {/* Tabla de Actividad Reciente */}
+      <div className="bg-white rounded-[2.5rem] border border-[#e6e6e6] shadow-sm overflow-hidden">
+        <div className="p-8 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-[#2C0140] font-tight">Citas Recientes</h2>
+          <Link to="/admin/appointments" className="text-[#4A008B] font-bold text-xs flex items-center gap-1 hover:underline">
+            Ver todas <ArrowUpRight size={14} />
           </Link>
         </div>
-
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Cliente</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Servicio</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Fecha</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Estado</th>
+          <table className="w-full text-left">
+            <thead className="bg-gray-50/50 text-[10px] font-bold text-[#555555] uppercase tracking-widest">
+              <tr>
+                <th className="py-4 px-8">Cliente</th>
+                <th className="py-4 px-8">Servicio</th>
+                <th className="py-4 px-8">Fecha y Hora</th>
+                <th className="py-4 px-8 text-right">Estado</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-100">
               {recentAppointments.map((apt) => (
-                <tr key={apt.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-3 px-4">
-                    <div className="font-medium text-gray-800">{apt.client.first_name} {apt.client.last_name}</div>
-                    <div className="text-sm text-gray-500">{apt.client.email}</div>
+                <tr key={apt.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="py-5 px-8">
+                    <div className="font-bold text-[#2C0140] text-sm leading-tight">
+                      {apt.client_details?.first_name} {apt.client_details?.last_name}
+                    </div>
+                    <div className="text-[10px] text-[#555555] mt-0.5">{apt.client_details?.email}</div>
                   </td>
-                  <td className="py-3 px-4 text-gray-800">{apt.service.name}</td>
-                  <td className="py-3 px-4 text-gray-600">
-                    {apt.time_slot.date} {apt.time_slot.start_time.substring(0, 5)}
+                  <td className="py-5 px-8">
+                    <div className="text-sm font-medium text-[#555555]">{apt.service_details?.name}</div>
                   </td>
-                  <td className="py-3 px-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(apt.status)}`}>
+                  <td className="py-5 px-8">
+                    <div className="flex items-center gap-2 text-xs font-bold text-[#2C0140]">
+                      <Calendar size={12} className="text-[#4A008B]" />
+                      {apt.timeslot_details?.date}
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-[#555555] mt-1">
+                      <Clock size={10} />
+                      {apt.timeslot_details?.start_time.substring(0, 5)} hrs
+                    </div>
+                  </td>
+                  <td className="py-5 px-8 text-right">
+                    <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-tighter border ${getStatusColor(apt.status)}`}>
                       {apt.status}
                     </span>
                   </td>
@@ -193,6 +136,11 @@ export default function AdminDashboard() {
               ))}
             </tbody>
           </table>
+          {recentAppointments.length === 0 && (
+            <div className="py-12 text-center text-[#555555] text-sm font-medium italic">
+              Aún no hay citas registradas en el sistema.
+            </div>
+          )}
         </div>
       </div>
     </div>

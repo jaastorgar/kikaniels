@@ -1,101 +1,148 @@
 import { Link } from 'react-router-dom'
-import { Calendar, Scissors, Clock, Star, Heart, Shield } from 'lucide-react'
+import { 
+  Calendar, 
+  Scissors, 
+  Clock, 
+  Star, 
+  Heart, 
+  Shield, 
+  Sparkles, 
+  ArrowRight,
+  CheckCircle2
+} from 'lucide-react'
 
 export default function Home() {
   const features = [
     {
       icon: Calendar,
-      title: 'Reserva Fácil',
-      description: 'Agenda tu cita en minutos con nuestro sistema intuitivo'
+      title: 'Reserva 24/7',
+      description: 'Gestiona tu cita en segundos desde cualquier dispositivo.'
     },
     {
       icon: Clock,
-      title: 'Horarios Flexibles',
-      description: 'Encuentra el horario perfecto que se adapte a tu agenda'
+      title: 'A Tu Ritmo',
+      description: 'Horarios flexibles que se adaptan a tu estilo de vida.'
     },
     {
       icon: Star,
-      title: 'Servicios Premium',
-      description: 'Disfruta de nuestros servicios de alta calidad'
+      title: 'Calidad Premium',
+      description: 'Productos y profesionales seleccionados bajo altos estándares.'
     },
     {
-      icon: Heart,
-      title: 'Atención Personalizada',
-      description: 'Cuidamos cada detalle para tu satisfacción'
+      icon: Shield,
+      title: 'Seguridad Total',
+      description: 'Atención profesional garantizada en la comodidad de tu hogar.'
     }
   ]
 
   const stats = [
-    { label: 'Clientes Satisfechos', value: '500+' },
-    { label: 'Servicios Ofrecidos', value: '20+' },
-    { label: 'Años de Experiencia', value: '5+' }
+    { label: 'Clientes Felices', value: '500+' },
+    { label: 'Tratamientos', value: '25+' },
+    { label: 'Especialistas', value: '10+' }
   ]
 
   return (
-    <div className="space-y-12">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary-500 to-primary-600 text-white p-8 lg:p-12">
-        <div className="relative z-10 max-w-2xl">
-          <h1 className="text-4xl lg:text-5xl font-bold mb-4">
-            Bienvenida a <span className="text-primary-100">Beauty Hogar</span>
+    <div className="space-y-20 pb-20 font-sans">
+      {/* Hero Section Premium */}
+      <section className="relative overflow-hidden rounded-[3rem] bg-gradient-to-br from-[#4A008B] via-[#7B1FA2] to-[#2C0140] text-white p-10 lg:p-20 shadow-2xl shadow-purple-900/20">
+        <div className="relative z-10 max-w-3xl space-y-8">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-[10px] font-bold uppercase tracking-[0.2em]">
+            <Sparkles size={14} className="text-[#0AE8C6]" />
+            Tu belleza, tu tiempo, tu hogar
+          </div>
+          
+          <h1 className="text-5xl lg:text-7xl font-bold font-tight leading-[0.9] tracking-tighter">
+            Especialistas en resaltar tu <span className="text-[#0AE8C6]">esencia</span>
           </h1>
-          <p className="text-lg text-primary-100 mb-8">
-            Tu espacio de belleza y cuidado personal. Reserva tu cita hoy y descubre 
-            una experiencia única de relajación y belleza.
+          
+          <p className="text-lg lg:text-xl text-purple-100 max-w-xl leading-relaxed font-medium">
+            Disfruta de una experiencia de salón profesional sin salir de casa. 
+            Agendamiento inteligente para personas que valoran su tiempo.
           </p>
-          <div className="flex flex-wrap gap-4">
-            <Link to="/services" className="bg-white text-primary-600 px-6 py-3 rounded-lg font-semibold hover:bg-primary-50 transition-colors">
-              Ver Servicios
+          
+          <div className="flex flex-wrap gap-5 pt-4">
+            <Link 
+              to="/services" 
+              className="bg-[#0AE8C6] text-[#2C0140] px-10 py-4 rounded-2xl font-bold hover:scale-105 transition-all shadow-lg flex items-center gap-2"
+            >
+              Explorar Servicios
+              <ArrowRight size={18} />
             </Link>
-            <Link to="/book" className="border-2 border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-white/10 transition-colors">
-              Reservar Ahora
+            <Link 
+              to="/book" 
+              className="bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white px-10 py-4 rounded-2xl font-bold hover:bg-white/20 transition-all"
+            >
+              Reservar Cita
             </Link>
           </div>
         </div>
-        <div className="absolute right-0 top-0 w-1/3 h-full opacity-10">
-          <Scissors className="w-full h-full" />
+
+        {/* Elemento Decorativo Flotante */}
+        <div className="absolute right-[-5%] top-[-10%] w-1/2 h-[120%] opacity-10 pointer-events-none rotate-12">
+          <Scissors className="w-full h-full text-white" />
         </div>
       </section>
 
-      {/* Features */}
-      <section>
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">¿Por qué elegirnos?</h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Stats Section */}
+      <section className="grid grid-cols-2 md:grid-cols-3 gap-8 px-4">
+        {stats.map((stat, index) => (
+          <div key={index} className="text-center space-y-1">
+            <p className="text-4xl lg:text-5xl font-bold text-[#4A008B] font-tight">{stat.value}</p>
+            <p className="text-[#555555] text-xs font-bold uppercase tracking-widest">{stat.label}</p>
+          </div>
+        ))}
+      </section>
+
+      {/* Features Grid */}
+      <section className="space-y-12">
+        <div className="text-center max-w-2xl mx-auto space-y-4">
+          <h2 className="text-3xl font-bold text-[#2C0140] font-tight tracking-tight">¿Por qué elegir Beauty Hogar?</h2>
+          <p className="text-[#555555] font-medium">Llevamos el bienestar a tu puerta con un sistema diseñado para tu comodidad.</p>
+        </div>
+        
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           {features.map((feature, index) => {
             const Icon = feature.icon
             return (
-              <div key={index} className="card card-hover text-center p-6">
-                <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Icon className="w-6 h-6 text-primary-600" />
+              <div key={index} className="bg-white p-8 rounded-[2.5rem] border border-[#e6e6e6] hover:shadow-xl transition-all group hover:-translate-y-1">
+                <div className="w-14 h-14 bg-[#F3E8FF] rounded-2xl flex items-center justify-center mb-6 group-hover:bg-[#4A008B] transition-colors">
+                  <Icon className="w-6 h-6 text-[#4A008B] group-hover:text-white" />
                 </div>
-                <h3 className="font-semibold text-gray-800 mb-2">{feature.title}</h3>
-                <p className="text-sm text-gray-600">{feature.description}</p>
+                <h3 className="font-bold text-[#2C0140] mb-3 text-lg font-tight">{feature.title}</h3>
+                <p className="text-sm text-[#555555] leading-relaxed font-medium">{feature.description}</p>
               </div>
             )
           })}
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="grid md:grid-cols-3 gap-6">
-        {stats.map((stat, index) => (
-          <div key={index} className="card text-center p-6 bg-primary-50 border-primary-100">
-            <p className="text-3xl font-bold text-primary-600 mb-1">{stat.value}</p>
-            <p className="text-gray-600">{stat.label}</p>
-          </div>
-        ))}
-      </section>
+      {/* CTA Final Empoderador */}
+      <section className="relative bg-[#2C0140] rounded-[3rem] p-10 lg:p-20 text-center overflow-hidden shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
+            <div className="absolute top-10 left-10 w-40 h-40 border-8 border-[#0AE8C6] rounded-full" />
+            <div className="absolute bottom-10 right-10 w-60 h-60 border-8 border-[#4A008B] rounded-full" />
+        </div>
 
-      {/* CTA */}
-      <section className="card bg-gradient-to-r from-gray-800 to-gray-900 text-white text-center p-8">
-        <h2 className="text-2xl font-bold mb-4">¿Lista para tu transformación?</h2>
-        <p className="text-gray-300 mb-6 max-w-xl mx-auto">
-          No esperes más para consentirte. Nuestro equipo de profesionales está 
-          listo para atenderte y hacer que te sientas increíble.
-        </p>
-        <Link to="/book" className="inline-block bg-primary-500 hover:bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold transition-colors">
-          Agendar Cita Ahora
-        </Link>
+        <div className="relative z-10 max-w-2xl mx-auto space-y-8">
+          <h2 className="text-3xl lg:text-5xl font-bold text-white font-tight leading-tight">
+            ¿Lista para tu momento <br /> de desconexión?
+          </h2>
+          <p className="text-purple-100 text-lg font-medium">
+            Únete a nuestra comunidad de clientes que ya transformaron su rutina de cuidado personal.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+            <Link 
+              to="/book" 
+              className="w-full sm:w-auto px-12 py-5 bg-[#0AE8C6] text-[#2C0140] font-bold rounded-2xl hover:scale-105 transition-transform shadow-lg shadow-cyan-900/20"
+            >
+              Agendar Cita Ahora
+            </Link>
+            <div className="flex items-center gap-2 text-white/80 text-sm font-bold uppercase tracking-tighter">
+              <CheckCircle2 size={18} className="text-[#0AE8C6]" />
+              Cancelación flexible
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   )

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Scissors, Clock, DollarSign, ArrowRight, Loader2 } from 'lucide-react'
+import { Scissors, Clock, ArrowRight, Loader2, Sparkles, User, Star } from 'lucide-react'
+import api from '../api/axios'
 
 export default function Services() {
   const [services, setServices] = useState([])
@@ -12,9 +13,12 @@ export default function Services() {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/appointments/services/')
-      const data = await response.json()
-      setServices(data)
+      // Obtenemos los servicios activos desde la API
+      const response = await api.get('appointments/services/')
+      const activeServices = Array.isArray(response.data) 
+        ? response.data.filter(s => s.is_active) 
+        : []
+      setServices(activeServices)
     } catch (error) {
       console.error('Error fetching services:', error)
     } finally {
@@ -24,58 +28,85 @@ export default function Services() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <Loader2 className="w-12 h-12 text-[#4A008B] animate-spin" />
+        <p className="text-[#555555] font-medium font-sans animate-pulse">
+          Preparando tu experiencia de belleza...
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-8">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Nuestros Servicios</h1>
-        <p className="text-gray-600">Descubre todo lo que tenemos para ti</p>
+    <div className="space-y-12 pb-24 font-sans max-w-7xl mx-auto px-4">
+      {/* Header Estilizado */}
+      <div className="text-center max-w-3xl mx-auto space-y-6 pt-12">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#F3E8FF] rounded-full text-[#4A008B] text-[10px] font-bold uppercase tracking-[0.2em] shadow-sm">
+          <Sparkles size={14} className="animate-pulse" /> Nuestra Selección
+        </div>
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#2C0140] font-tight tracking-tight leading-none">
+          Especialistas en tu <span className="text-[#4A008B]">Bienestar</span>
+        </h1>
+        <p className="text-[#555555] text-lg max-w-2xl mx-auto font-medium">
+          Descubre servicios premium diseñados para renovar tu imagen y energía en la comodidad de tu hogar.
+        </p>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Grid de Servicios con Multi-tenancy */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
         {services.map((service) => (
-          <div key={service.id} className="card card-hover overflow-hidden group">
-            {service.image && (
-              <div className="h-48 -mx-6 -mt-6 mb-4 overflow-hidden">
-                <img 
-                  src={service.image} 
-                  alt={service.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
+          <div 
+            key={service.id} 
+            className="flex flex-col h-full bg-white rounded-[2.5rem] border border-[#e6e6e6] group hover:shadow-2xl hover:border-[#4A008B]/20 transition-all duration-500 overflow-hidden"
+          >
+            {/* Imagen/Icono de Cabecera */}
+            <div className="h-48 bg-gradient-to-br from-[#F3E8FF]/50 to-white flex items-center justify-center relative overflow-hidden">
+              <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm border border-[#e6e6e6]/50">
+                <Star size={12} className="text-yellow-400 fill-yellow-400" />
+                <span className="text-[10px] font-bold text-[#2C0140] uppercase tracking-widest">Premium</span>
               </div>
-            )}
-            
-            <div className="flex items-start justify-between mb-3">
-              <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-                <Scissors className="w-6 h-6 text-primary-600" />
-              </div>
-              <span className="text-2xl font-bold text-primary-600">
-                ${service.price.toLocaleString()}
-              </span>
+              <Scissors size={56} className="text-[#4A008B]/10 group-hover:scale-110 group-hover:text-[#4A008B]/30 transition-all duration-700" />
             </div>
 
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">{service.name}</h3>
-            <p className="text-gray-600 text-sm mb-4 line-clamp-2">{service.description}</p>
+            {/* Contenido de la Tarjeta */}
+            <div className="p-8 flex flex-col flex-1">
+              <div className="flex justify-between items-start mb-4 gap-4">
+                <h3 className="text-2xl font-bold text-[#2C0140] font-tight tracking-tight group-hover:text-[#4A008B] transition-colors leading-tight">
+                  {service.name}
+                </h3>
+                <span className="text-xl font-bold text-[#4A008B] font-tight whitespace-nowrap">
+                  ${parseFloat(service.price).toLocaleString()}
+                </span>
+              </div>
+              
+              <p className="text-[#555555] text-sm leading-relaxed mb-6 line-clamp-3 font-medium">
+                {service.description}
+              </p>
 
-            <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
-              <span className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                {service.duration_minutes} min
-              </span>
+              {/* Información de la Profesional (Multi-admin) */}
+              <div className="space-y-3 mb-8">
+                <div className="flex items-center gap-2 text-[#0AE8C6] font-bold text-[10px] uppercase tracking-[0.1em]">
+                  <Clock size={14} />
+                  <span>Duración: {service.duration} Minutos</span>
+                </div>
+                <div className="flex items-center gap-2 text-[#4A008B] font-bold text-[10px] uppercase tracking-[0.1em] bg-[#F3E8FF]/40 px-3 py-2 rounded-xl border border-[#4A008B]/5">
+                  <User size={14} />
+                  {/* Mostramos el correo o nombre del profesional dueño del servicio */}
+                  <span>Profesional: {service.provider_email ? service.provider_email.split('@')[0] : 'Beauty Pro'}</span>
+                </div>
+              </div>
+
+              {/* Botón de Acción Alineado al Fondo (Fix del botón corrido) */}
+              <div className="mt-auto">
+                <Link
+                  to={`/book/${service.id}`}
+                  className="w-full flex items-center justify-center gap-3 bg-[#2C0140] text-white py-4 rounded-2xl font-bold text-sm shadow-xl shadow-purple-900/5 hover:bg-[#4A008B] hover:shadow-purple-200 transition-all active:scale-[0.98] group/btn"
+                >
+                  Reservar Ahora
+                  <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
+                </Link>
+              </div>
             </div>
-
-            <Link
-              to={`/book/${service.id}`}
-              className="flex items-center justify-center gap-2 w-full bg-primary-50 text-primary-600 py-2 rounded-lg font-medium hover:bg-primary-100 transition-colors"
-            >
-              Reservar
-              <ArrowRight className="w-4 h-4" />
-            </Link>
           </div>
         ))}
       </div>

@@ -1,29 +1,24 @@
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-def send_appointment_notification(instance):
+def send_appointment_notification(user_id, message_data):
     """
-    Función puente que toma una cita y envía el mensaje al socket.
+    Envía una notificación por WebSocket al canal específico del usuario.
     """
     channel_layer = get_channel_layer()
-    group_name = f"user_{instance.client.id}"
+    if not channel_layer:
+        return
 
-    # Definimos los mensajes amigables
-    status_messages = {
-        'confirmed': "¡Tu cita ha sido confirmada!",
-        'cancelled': "Lo sentimos, tu cita ha sido cancelada.",
-        'completed': "¡Tu servicio ha finalizado!",
-        'pending': "Tu cita está pendiente de revisión."
-    }
-    
-    message = status_messages.get(instance.status, "Actualización en tu cita")
+    # El nombre del grupo es único por usuario (ej: user_5)
+    group_name = f"user_{user_id}"
 
-    async_to_sync(channel_layer.group_send)(
-        group_name,
-        {
-            "type": "appointment_notification",
-            "message": message,
-            "appointment_id": instance.id,
-            "status": instance.status
-        }
-    )
+    try:
+        async_to_sync(channel_layer.group_send)(
+            group_name,
+            {
+                "type": "appointment_notification",
+                "notification": message_data
+            }
+        )
+    except Exception as e:
+        print(f"Error en WebSocket de Beauty Hogar: {e}")

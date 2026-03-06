@@ -1,11 +1,9 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../api/axios'
 
 const AuthContext = createContext(null)
 
 export const useAuth = () => useContext(AuthContext)
-
-const API_URL = 'http://localhost:8000/api'
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -14,7 +12,6 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
       fetchProfile()
     } else {
       setLoading(false)
@@ -23,11 +20,13 @@ export function AuthProvider({ children }) {
 
   const fetchProfile = async () => {
     try {
-      const response = await axios.get(`${API_URL}/users/profile/`)
+      // Usamos la ruta limpia para evitar el error de doble /api/
+      const response = await api.get('users/profile/')
       setUser(response.data)
     } catch (error) {
+      console.error("Error al cargar perfil:", error)
       localStorage.removeItem('token')
-      delete axios.defaults.headers.common['Authorization']
+      setUser(null)
     } finally {
       setLoading(false)
     }
@@ -35,11 +34,12 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post(`${API_URL}/users/login/`, { email, password })
+      const response = await api.post('users/login/', { email, password })
       const { access, user: userData } = response.data
+      
       localStorage.setItem('token', access)
-      axios.defaults.headers.common['Authorization'] = `Bearer ${access}`
       setUser(userData)
+      
       return { success: true, user: userData }
     } catch (error) {
       return { 
@@ -51,7 +51,7 @@ export function AuthProvider({ children }) {
 
   const register = async (userData) => {
     try {
-      const response = await axios.post(`${API_URL}/users/register/client/`, userData)
+      const response = await api.post('users/register/client/', userData)
       return { success: true, data: response.data }
     } catch (error) {
       return { 
@@ -63,7 +63,6 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem('token')
-    delete axios.defaults.headers.common['Authorization']
     setUser(null)
   }
 
@@ -73,12 +72,22 @@ export function AuthProvider({ children }) {
     register,
     logout,
     loading,
-    isAdmin: user?.is_admin || false
+    // Verificación de rol basada en tu modelo de Django
+    isAdmin: user?.role === 'admin' 
   }
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {/* Si está cargando, mostramos un spinner con tus colores corporativos.
+        Esto evita que el contenido principal falle por falta de datos del usuario.
+      */}
+      {!loading ? (
+        children
+      ) : (
+        <div className="min-h-screen flex items-center justify-center bg-[#2C0140]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#0AE8C6]"></div>
+        </div>
+      )}
     </AuthContext.Provider>
   )
 }
