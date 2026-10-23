@@ -2,6 +2,7 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db import transaction
 from django.db.models import Count, Sum, Q
 from django.utils import timezone
 from datetime import datetime, timedelta
@@ -43,6 +44,11 @@ class ServiceViewSet(viewsets.ModelViewSet):
 class TimeSlotViewSet(viewsets.ModelViewSet):
     serializer_class = TimeSlotSerializer
 
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAdminUser()]
+        return [permissions.AllowAny()]
+
     def get_queryset(self):
         user = self.request.user
         
@@ -70,6 +76,29 @@ class TimeSlotViewSet(viewsets.ModelViewSet):
             
         return queryset
 
+    @action(detail=False, methods=['get'])
+    def available(self, request):
+        """Devuelve únicamente los horarios disponibles desde hoy en adelante."""
+        user = request.user
+        queryset = TimeSlot.objects.filter(
+            status='available',
+            date__gte=timezone.now().date()
+        )
+
+        date = request.query_params.get('date')
+        provider_id = request.query_params.get('provider_id')
+
+        if user.is_authenticated and user.role == 'admin' and not provider_id:
+            queryset = queryset.filter(provider=user)
+        elif provider_id:
+            queryset = queryset.filter(provider_id=provider_id)
+
+        if date:
+            queryset = queryset.filter(date=date)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
     def perform_create(self, serializer):
         serializer.save(provider=self.request.user)
 
@@ -91,7 +120,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(client=self.request.user)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
     def confirm(self, request, pk=None):
         appointment = self.get_object()
         appointment.status = 'confirmed'
@@ -105,12 +134,52 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment.save()
         return Response({'status': 'cita cancelada'})
     
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
     def complete(self, request, pk=None):
         appointment = self.get_object()
         appointment.status = 'completed'
         appointment.save()
         return Response({'status': 'cita completada'})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    def reschedule(self, request, pk=None):
+        appointment = self.get_object()
+        new_slot_id = request.data.get('new_time_slot_id')
+        if not new_slot_id:
+            return Response(
+                {'error': 'Debe especificar el nuevo horario (new_time_slot_id).'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        with transaction.atomic():
+            try:
+                new_slot = TimeSlot.objects.select_for_update().get(
+                    id=new_slot_id,
+                    provider=appointment.service.provider
+                )
+            except TimeSlot.DoesNotExist:
+                return Response(
+                    {'error': 'El horario seleccionado no existe o pertenece a otro profesional.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            if new_slot.status != 'available':
+                return Response(
+                    {'error': 'El horario seleccionado ya no está disponible.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            old_slot = appointment.timeslot
+            if old_slot.id != new_slot.id:
+                TimeSlot.objects.filter(id=old_slot.id).update(status='available')
+                new_slot.status = 'occupied'
+                new_slot.save()
+
+            appointment.timeslot = new_slot
+            appointment.status = 'rescheduled'
+            appointment.save()
+
+        return Response({'status': 'cita reagendada'})
 
 # --- SISTEMA DE NOTIFICACIONES ---
 
@@ -131,12 +200,12 @@ class NotificationViewSet(viewsets.ModelViewSet):
         return Response({'status': 'leída'})
 
 class NotificationUnreadCountView(APIView):
-    """Contador dinámico para AdminHeader.jsx."""
+    """Contador dinámico para AdminHeader.jsx y Layout.jsx."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         count = Notification.objects.filter(user=request.user, is_read=False).count()
-        return Response({'unread_count': count})
+        return Response({'unread_count': count, 'count': count})
 
 # --- DASHBOARD Y UTILIDADES ---
 
@@ -147,7 +216,7 @@ class AdminDashboardStatsView(APIView):
     def get(self, request):
         stats = Appointment.objects.filter(service__provider=request.user).aggregate(
             total_appointments=Count('id'),
-            total_revenue=Sum('total_price', default=0),
+            total_revenue=Sum('total_price', filter=~Q(status='cancelled'), default=0),
             pending_appointments=Count('id', filter=Q(status='pending')),
             confirmed_appointments=Count('id', filter=Q(status='confirmed')),
             total_clients=Count('client', distinct=True)
@@ -172,13 +241,14 @@ class BulkCreateTimeSlotsView(APIView):
             created_slots = 0
             while current_time + timedelta(minutes=interval) <= end_time:
                 slot_end = current_time + timedelta(minutes=interval)
-                TimeSlot.objects.create(
+                _, created = TimeSlot.objects.get_or_create(
                     provider=request.user,
                     date=date,
                     start_time=current_time.time(),
-                    end_time=slot_end.time()
+                    defaults={'end_time': slot_end.time()}
                 )
-                created_slots += 1
+                if created:
+                    created_slots += 1
                 current_time = slot_end
 
             return Response({"message": f"Se crearon {created_slots} horarios."}, status=status.HTTP_201_CREATED)

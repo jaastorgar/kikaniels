@@ -64,7 +64,7 @@ export default function BookAppointment() {
     setError('')
     try {
       // Filtrado por fecha y profesional para garantizar consistencia
-      const response = await api.get('appointments/time-slots/', {
+      const response = await api.get('appointments/time-slots/available/', {
         params: { 
           date: date,
           provider_id: providerId 

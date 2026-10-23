@@ -30,6 +30,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
             client_user = instance.client
             status_msgs = {
                 'confirmed': "✨ ¡Tu cita ha sido confirmada!",
+                'rescheduled': "🔄 Tu cita ha sido reagendada a un nuevo horario.",
                 'cancelled': "❌ Tu cita ha sido cancelada.",
                 'completed': "✅ ¡Gracias por preferir Beauty Hogar! Tu servicio ha finalizado."
             }

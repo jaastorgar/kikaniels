@@ -29,9 +29,9 @@ urlpatterns = [
         'post': 'create'
     }), name='time-slot-list'),
     
-    # Ruta para obtener slots disponibles (usada por BookAppointment.jsx)
+    # Ruta para obtener slots disponibles (usada por BookAppointment.jsx y AdminAppointments.jsx)
     path('time-slots/available/', TimeSlotViewSet.as_view({
-        'get': 'list' # Se apoya en el filtro de get_queryset en views.py
+        'get': 'available'
     }), name='available-slots'),
 
     path('time-slots/<int:pk>/', TimeSlotViewSet.as_view({
@@ -56,7 +56,7 @@ urlpatterns = [
         'delete': 'destroy'
     }), name='appointment-detail'),
 
-    # Rutas para acciones administrativas (Confirmar, Cancelar, etc.)
+    # Rutas para acciones administrativas (Confirmar, Cancelar, Completar, Reagendar)
     path('<int:pk>/confirm/', AppointmentViewSet.as_view({'post': 'confirm'}), name='appointment-confirm'),
     path('<int:pk>/cancel/', AppointmentViewSet.as_view({'post': 'cancel'}), name='appointment-cancel'),
     path('<int:pk>/complete/', AppointmentViewSet.as_view({'post': 'complete'}), name='appointment-complete'),
@@ -67,8 +67,12 @@ urlpatterns = [
         'get': 'list'
     }), name='notification-list'),
 
-    # SOLUCIÓN: Solo una ruta para unread_count (usamos la vista especializada)
     path('notifications/unread_count/', NotificationUnreadCountView.as_view(), name='unread-notification-count'),
+
+    path('notifications/<int:pk>/', NotificationViewSet.as_view({
+        'get': 'retrieve',
+        'delete': 'destroy'
+    }), name='notification-detail'),
 
     path('notifications/<int:pk>/read/', NotificationViewSet.as_view({
         'post': 'read'

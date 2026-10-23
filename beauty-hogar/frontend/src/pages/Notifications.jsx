@@ -25,18 +25,16 @@ export default function Notifications() {
   useEffect(() => {
     fetchNotifications()
 
-    // MEJORA: CONEXIÓN EN TIEMPO REAL
-    // Mantiene una línea abierta con el servidor para recibir avisos al instante
-    const socket = new WebSocket(`ws://localhost:8000/ws/appointments/`)
+    // CONEXIÓN EN TIEMPO REAL CON TOKEN JWT
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const socket = new WebSocket(`${protocol}//${window.location.host}/ws/appointments/?token=${token}`)
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data)
-      if (data.type === 'notification') {
-        // Alerta visual tipo Toast para feedback inmediato
-        toast.info(data.message, { 
-          icon: <Bell className="text-[#4A008B]" />,
-          duration: 5000 
-        })
+      if (data.type === 'appointment_update' || data.type === 'notification') {
         // Recarga automática de la lista para mostrar el mensaje nuevo
         fetchNotifications()
       }

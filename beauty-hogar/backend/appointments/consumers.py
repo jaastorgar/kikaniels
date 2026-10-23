@@ -1,6 +1,5 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
-from channels.db import database_sync_to_async
 
 class AppointmentConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -30,11 +29,14 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
         }))
     
     async def appointment_notification(self, event):
+        notification = event.get('notification', {})
         await self.send(text_data=json.dumps({
             'type': 'appointment_update',
-            'appointment_id': event['appointment_id'],
-            'status': event['status'],
-            'message': event['message']
+            'appointment_id': notification.get('id', event.get('appointment_id')),
+            'title': notification.get('title', 'Actualización de Cita'),
+            'status': notification.get('status', event.get('status')),
+            'message': notification.get('message', event.get('message')),
+            'is_new': notification.get('is_new', False)
         }))
     
     @staticmethod

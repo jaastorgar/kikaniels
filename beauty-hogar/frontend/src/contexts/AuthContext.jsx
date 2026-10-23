@@ -7,11 +7,13 @@ export const useAuth = () => useContext(AuthContext)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [token, setToken] = useState(() => localStorage.getItem('token'))
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (token) {
+    const storedToken = localStorage.getItem('token')
+    if (storedToken) {
+      setToken(storedToken)
       fetchProfile()
     } else {
       setLoading(false)
@@ -26,6 +28,7 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error("Error al cargar perfil:", error)
       localStorage.removeItem('token')
+      setToken(null)
       setUser(null)
     } finally {
       setLoading(false)
@@ -38,6 +41,7 @@ export function AuthProvider({ children }) {
       const { access, user: userData } = response.data
       
       localStorage.setItem('token', access)
+      setToken(access)
       setUser(userData)
       
       return { success: true, user: userData }
@@ -63,11 +67,13 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem('token')
+    setToken(null)
     setUser(null)
   }
 
   const value = {
     user,
+    token,
     login,
     register,
     logout,

@@ -39,13 +39,16 @@ export default function AdminDashboard() {
     // Carga inicial
     loadDashboardData()
 
-    // MEJORA: CONEXIÓN EN TIEMPO REAL
-    // Mantiene las métricas sincronizadas con la actividad del servidor
-    const socket = new WebSocket(`ws://localhost:8000/ws/appointments/`)
+    // CONEXIÓN EN TIEMPO REAL CON TOKEN JWT
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const socket = new WebSocket(`${protocol}//${window.location.host}/ws/appointments/?token=${token}`)
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data)
-      if (data.type === 'notification') {
+      if (data.type === 'appointment_update' || data.type === 'notification') {
         // Si hay una nueva reserva o cambio de estado, refrescamos todo el panel
         loadDashboardData()
       }
@@ -90,7 +93,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { label: 'Citas Totales', val: stats?.total_appointments || 0, icon: Calendar, color: 'from-[#4A008B] to-[#2C0140]' },
-          { label: 'Ingresos Brutos', val: `$${(stats?.total_revenue || 0).toLocaleString()}`, icon: DollarSign, color: 'from-[#0AE8C6] to-[#4A008B]' },
+          { label: 'Ingresos Brutos', val: `$${parseFloat(stats?.total_revenue || 0).toLocaleString()}`, icon: DollarSign, color: 'from-[#0AE8C6] to-[#4A008B]' },
           { label: 'Por Confirmar', val: stats?.pending_appointments || 0, icon: AlertCircle, color: 'from-[#7B1FA2] to-[#4A008B]' },
           { label: 'Clientes Base', val: stats?.total_clients || 0, icon: Users, color: 'from-[#2C0140] to-[#7B1FA2]' }
         ].map((s, i) => (

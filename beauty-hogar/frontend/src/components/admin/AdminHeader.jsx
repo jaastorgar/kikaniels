@@ -14,16 +14,22 @@ export default function AdminHeader() {
     // 1. Carga inicial del contador desde la base de datos
     fetchUnreadCount()
     
-    // 2. CONEXIÓN EN TIEMPO REAL: Escuchar el canal de notificaciones
-    const socket = new WebSocket(`ws://localhost:8000/ws/appointments/`)
+    // 2. CONEXIÓN EN TIEMPO REAL: Escuchar el canal de notificaciones con JWT
+    const token = localStorage.getItem('token')
+    let socket = null
 
-    socket.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      if (data.type === 'notification') {
-        // Incrementamos el contador y disparamos animación visual
-        setUnreadCount(prev => prev + 1)
-        setIsAnimating(true)
-        setTimeout(() => setIsAnimating(false), 1500)
+    if (token) {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      socket = new WebSocket(`${protocol}//${window.location.host}/ws/appointments/?token=${token}`)
+
+      socket.onmessage = (event) => {
+        const data = JSON.parse(event.data)
+        if (data.type === 'appointment_update' || data.type === 'notification') {
+          // Incrementamos el contador y disparamos animación visual
+          setUnreadCount(prev => prev + 1)
+          setIsAnimating(true)
+          setTimeout(() => setIsAnimating(false), 1500)
+        }
       }
     }
 
@@ -31,7 +37,7 @@ export default function AdminHeader() {
     const interval = setInterval(fetchUnreadCount, 60000)
 
     return () => {
-      socket.close()
+      if (socket) socket.close()
       clearInterval(interval)
     }
   }, [])
@@ -39,7 +45,7 @@ export default function AdminHeader() {
   const fetchUnreadCount = async () => {
     try {
       const response = await api.get('appointments/notifications/unread_count/')
-      setUnreadCount(response.data.unread_count)
+      setUnreadCount(response.data.unread_count ?? 0)
     } catch (error) {
       console.error("Error al sincronizar notificaciones de Beauty Hogar")
     }

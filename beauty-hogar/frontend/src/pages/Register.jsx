@@ -24,6 +24,12 @@ export default function Register() {
     setLoading(true)
     setError('')
 
+    if (formData.password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres')
+      setLoading(false)
+      return
+    }
+
     if (formData.password !== formData.password_confirm) {
       setError('Las contraseñas no coinciden')
       setLoading(false)
@@ -36,7 +42,7 @@ export default function Register() {
       setSuccess(true)
       setTimeout(() => navigate('/login'), 2000)
     } else {
-      setError(typeof result.error === 'object' ? JSON.stringify(result.error) : result.error)
+      setError(typeof result.error === 'object' ? Object.values(result.error).flat().join(' ') : result.error)
     }
     setLoading(false)
   }
@@ -119,14 +125,14 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña (mín. 8 caracteres)</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="input-field pr-10"
-                  minLength={6}
+                  minLength={8}
                   required
                 />
                 <button
@@ -146,6 +152,7 @@ export default function Register() {
                 value={formData.password_confirm}
                 onChange={(e) => setFormData({ ...formData, password_confirm: e.target.value })}
                 className="input-field"
+                minLength={8}
                 required
               />
             </div>

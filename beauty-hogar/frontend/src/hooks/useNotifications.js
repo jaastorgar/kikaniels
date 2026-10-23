@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export const useNotifications = () => {
   const { user, token } = useAuth();
@@ -7,30 +7,25 @@ export const useNotifications = () => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    if (!user || !token) return;
+    const activeToken = token || localStorage.getItem('token');
+    if (!user || !activeToken) return;
 
-    // Usamos el protocolo ws:// (o wss:// en producción)
-    // El proxy de Vite se encarga de redirigir /ws a localhost:8000
-    const socketUrl = `ws://${window.location.host}/ws/appointments/`;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const socketUrl = `${protocol}//${window.location.host}/ws/appointments/?token=${activeToken}`;
     
     const socket = new WebSocket(socketUrl);
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
       
-      // Aquí recibimos lo que envía tu 'utils.py' del backend
-      if (data.type === 'appointment_notification') {
+      if (data.type === 'appointment_update' || data.type === 'appointment_notification' || data.type === 'notification') {
         setNotifications((prev) => [data, ...prev]);
         setUnreadCount((prev) => prev + 1);
-        
-        // Aquí podríamos disparar un sonido o un Toast (lo veremos luego)
-        console.log("Nueva notificación:", data.message);
       }
     };
 
     socket.onclose = () => {
-      console.log("WebSocket cerrado. Reintentando...");
-      // Aquí podrías implementar una lógica de reconexión
+      console.log("WebSocket cerrado.");
     };
 
     return () => socket.close();

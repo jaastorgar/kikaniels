@@ -27,16 +27,16 @@ export default function AdminNotifications() {
   useEffect(() => {
     fetchNotifications()
 
-    // CONEXIÓN EN TIEMPO REAL (WebSocket)
-    const socket = new WebSocket(`ws://localhost:8000/ws/appointments/`)
+    // CONEXIÓN EN TIEMPO REAL (WebSocket con token JWT)
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const socket = new WebSocket(`${protocol}//${window.location.host}/ws/appointments/?token=${token}`)
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data)
-      if (data.type === 'notification') {
-        toast.info(data.message, { 
-          icon: <Bell className="text-[#4A008B]" />,
-          duration: 6000 
-        })
+      if (data.type === 'appointment_update' || data.type === 'notification') {
         fetchNotifications()
       }
     }
@@ -186,11 +186,11 @@ export default function AdminNotifications() {
                     <div className="flex items-center gap-6">
                        <div className="flex items-center gap-3">
                           <div className="p-2 bg-white rounded-lg"><Scissors size={14} className="text-[#4A008B]" /></div>
-                          <span className="text-xs font-bold text-[#2C0140] font-tight">{n.appointment_details.service_details.name}</span>
+                          <span className="text-xs font-bold text-[#2C0140] font-tight">{n.appointment_details.service_details?.name}</span>
                        </div>
                        <div className="flex items-center gap-3">
                           <div className="p-2 bg-white rounded-lg"><User size={14} className="text-[#4A008B]" /></div>
-                          <span className="text-xs font-bold text-[#555555]">{n.appointment_details.client_details.first_name}</span>
+                          <span className="text-xs font-bold text-[#555555]">{n.appointment_details.client_details?.first_name}</span>
                        </div>
                     </div>
                     <button 

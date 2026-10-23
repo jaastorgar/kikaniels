@@ -31,7 +31,7 @@ const Layout = ({ children, admin = false }) => {
     try {
       // Ruta relativa limpia para usar la baseURL '/api'
       const response = await api.get('appointments/notifications/unread_count/');
-      setUnreadCount(response.data.count || 0);
+      setUnreadCount(response.data.unread_count ?? response.data.count ?? 0);
     } catch (error) {
       if (error.response?.status === 401) {
         console.warn('Sesión no autorizada para notificaciones');
@@ -39,12 +39,14 @@ const Layout = ({ children, admin = false }) => {
     }
   }, [user?.id]); // Solo cambia si el ID del usuario cambia
 
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications, location.pathname]);
+
   // 2. Gestión de WebSockets (Conexión estable)
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!user || !token || socketRef.current) return;
-
-    fetchNotifications();
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const socketUrl = `${protocol}//${window.location.host}/ws/appointments/?token=${token}`;
@@ -56,7 +58,7 @@ const Layout = ({ children, admin = false }) => {
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (data.type === 'appointment_update') {
+      if (data.type === 'appointment_update' || data.type === 'notification') {
         setUnreadCount(prev => prev + 1);
         
         toast(data.message, {
@@ -77,11 +79,12 @@ const Layout = ({ children, admin = false }) => {
     };
 
     return () => {
-      if (socket.readyState === 1) {
+      if (socket.readyState === 1 || socket.readyState === 0) {
         socket.close();
       }
+      socketRef.current = null;
     };
-  }, [user?.id, admin, navigate, fetchNotifications]);
+  }, [user?.id, admin, navigate]);
 
   const handleLogout = () => {
     logout();

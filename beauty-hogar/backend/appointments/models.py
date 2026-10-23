@@ -57,13 +57,14 @@ class Appointment(models.Model):
     STATUS_CHOICES = (
         ('pending', 'Pendiente'),
         ('confirmed', 'Confirmada'),
+        ('rescheduled', 'Reagendada'),
         ('completed', 'Completada'),
         ('cancelled', 'Cancelada'),
     )
 
     client = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='appointments')
     service = models.ForeignKey('Service', on_delete=models.CASCADE)
-    timeslot = models.OneToOneField('TimeSlot', on_delete=models.CASCADE)
+    timeslot = models.ForeignKey('TimeSlot', on_delete=models.CASCADE, related_name='appointments')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
     notes = models.TextField(blank=True, null=True)
