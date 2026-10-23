@@ -1,0 +1,20 @@
+{
+  "name": "Beauty Hogar - Belleza a Domicilio",
+  "short_name": "Beauty Hogar",
+  "description": "Plataforma de agendamiento de servicios de belleza a domicilio en tiempo real.",
+  "lang": "es-CL",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#2C0140",
+  "theme_color": "#2C0140",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

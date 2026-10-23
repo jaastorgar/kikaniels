@@ -112,7 +112,7 @@ export default function Register() {
                   }`}
                 >
                   <ShieldCheck className="w-4 h-4" />
-                  Admin
+                  Administrador
                 </button>
               </div>
             </div>
@@ -127,7 +127,7 @@ export default function Register() {
                   value={formData.secret_key}
                   onChange={(e) => setFormData({ ...formData, secret_key: e.target.value })}
                   className="input-field"
-                  placeholder="Ingresa BEAUTY_ADMIN_SECRET"
+                  placeholder="Ingresa la clave de administrador"
                   required
                 />
               </div>

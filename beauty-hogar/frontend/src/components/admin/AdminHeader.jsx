@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Bell, User, LogOut, Search, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import api from '../../api/axios'
+import api, { getWebSocketUrl } from '../../api/axios'
 
 export default function AdminHeader() {
   const { user, logout } = useAuth()
@@ -19,8 +19,7 @@ export default function AdminHeader() {
     let socket = null
 
     if (token) {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      socket = new WebSocket(`${protocol}//${window.location.host}/ws/appointments/?token=${token}`)
+      socket = new WebSocket(getWebSocketUrl(token))
 
       socket.onmessage = (event) => {
         const data = JSON.parse(event.data)

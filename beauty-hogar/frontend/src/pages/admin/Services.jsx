@@ -145,7 +145,7 @@ export default function AdminServices() {
               <div className="w-12 h-12 bg-[#F3E8FF] rounded-2xl flex items-center justify-center border border-[#4A008B]/10 transition-colors group-hover:bg-[#4A008B]">
                 <Scissors className="w-6 h-6 text-[#4A008B] group-hover:text-white" />
               </div>
-              <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                 <button onClick={() => openEditModal(service)} className="p-2 text-[#4A008B] hover:bg-[#F3E8FF] rounded-lg transition-colors">
                   <Edit2 className="w-4 h-4" />
                 </button>

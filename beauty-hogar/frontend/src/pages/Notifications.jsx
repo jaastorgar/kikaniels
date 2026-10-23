@@ -15,7 +15,7 @@ import { format, isValid, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
-import api from '../api/axios'
+import api, { getWebSocketUrl } from '../api/axios'
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([])
@@ -29,8 +29,7 @@ export default function Notifications() {
     const token = localStorage.getItem('token')
     if (!token) return
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const socket = new WebSocket(`${protocol}//${window.location.host}/ws/appointments/?token=${token}`)
+    const socket = new WebSocket(getWebSocketUrl(token))
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data)
@@ -162,7 +161,7 @@ export default function Notifications() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex flex-col gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                 {!n.is_read && (
                   <button 
                     onClick={() => markAsRead(n.id)}

@@ -11,12 +11,43 @@ import {
   X,
   User,
   ChevronRight,
-  Scissors // SE AÑADIÓ ESTA IMPORTACIÓN
+  Scissors
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, isValid } from 'date-fns'
 import { es } from 'date-fns/locale'
 import api from "../../api/axios"
+
+const STATUS_FILTER_LABELS = {
+  all: 'Ver Todas',
+  pending: 'Pendientes',
+  confirmed: 'Confirmadas',
+  rescheduled: 'Reagendadas',
+  completed: 'Completadas',
+  cancelled: 'Canceladas'
+}
+
+const STATUS_BADGE_LABELS = {
+  pending: 'Pendiente',
+  confirmed: 'Confirmada',
+  rescheduled: 'Reagendada',
+  completed: 'Completada',
+  cancelled: 'Cancelada'
+}
+
+const STATUS_BADGE_STYLES = {
+  pending: 'bg-amber-50 text-amber-700 border-amber-200',
+  confirmed: 'bg-[#0AE8C6]/10 text-[#07a68e] border-[#0AE8C6]/30',
+  rescheduled: 'bg-blue-50 text-blue-700 border-blue-200',
+  completed: 'bg-gray-100 text-gray-600 border-gray-200',
+  cancelled: 'bg-red-50 text-red-700 border-red-200'
+}
+
+const ACTION_SUCCESS_LABELS = {
+  confirm: 'Cita confirmada exitosamente',
+  cancel: 'Cita cancelada',
+  complete: 'Servicio finalizado exitosamente'
+}
 
 export default function AdminAppointments() {
   const [appointments, setAppointments] = useState([])
@@ -47,7 +78,7 @@ export default function AdminAppointments() {
   const handleAction = async (id, action) => {
     try {
       await api.post(`appointments/${id}/${action}/`)
-      toast.success(`Operación exitosa: ${action}`)
+      toast.success(ACTION_SUCCESS_LABELS[action] || 'Operación realizada con éxito')
       fetchAppointments()
     } catch (error) {
       toast.error('No se pudo completar la acción en el servidor')
@@ -127,9 +158,9 @@ export default function AdminAppointments() {
         </div>
       </div>
 
-      {/* Tabs de Filtro */}
+      {/* Tabs de Filtro en Español */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        {['all', 'pending', 'confirmed', 'completed', 'cancelled'].map((f) => (
+        {['all', 'pending', 'confirmed', 'rescheduled', 'completed', 'cancelled'].map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -139,7 +170,7 @@ export default function AdminAppointments() {
                 : 'bg-white text-[#555555] border-[#e6e6e6] hover:border-[#4A008B]/30'
             }`}
           >
-            {f === 'all' ? 'Ver Todas' : f}
+            {STATUS_FILTER_LABELS[f] || f}
           </button>
         ))}
       </div>
@@ -160,9 +191,14 @@ export default function AdminAppointments() {
                   </div>
                   
                   <div className="space-y-1">
-                    <h3 className="font-bold text-[#2C0140] text-lg font-tight">
-                      {apt.client_details?.first_name} {apt.client_details?.last_name}
-                    </h3>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <h3 className="font-bold text-[#2C0140] text-lg font-tight">
+                        {apt.client_details?.first_name} {apt.client_details?.last_name}
+                      </h3>
+                      <span className={`px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border ${STATUS_BADGE_STYLES[apt.status] || STATUS_BADGE_STYLES.pending}`}>
+                        {STATUS_BADGE_LABELS[apt.status] || apt.status}
+                      </span>
+                    </div>
                     <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-[#555555] font-medium">
                       <span className="flex items-center gap-1.5 font-bold">
                         <Scissors size={14} className="text-[#4A008B]" />
@@ -199,7 +235,7 @@ export default function AdminAppointments() {
                     </>
                   )}
 
-                  {apt.status === 'confirmed' && (
+                  {(apt.status === 'confirmed' || apt.status === 'rescheduled') && (
                     <button 
                       onClick={() => handleAction(apt.id, 'complete')}
                       className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-[#4A008B] text-white rounded-xl font-bold text-xs shadow-md hover:bg-[#38006B] transition-colors"
@@ -208,13 +244,15 @@ export default function AdminAppointments() {
                     </button>
                   )}
 
-                  <button 
-                    onClick={() => openReschedule(apt)}
-                    className="p-2 text-[#555555] hover:bg-gray-100 rounded-xl transition-colors"
-                    title="Reagendar"
-                  >
-                    <RefreshCw size={18} />
-                  </button>
+                  {!['completed', 'cancelled'].includes(apt.status) && (
+                    <button 
+                      onClick={() => openReschedule(apt)}
+                      className="p-2 text-[#555555] hover:bg-gray-100 rounded-xl transition-colors"
+                      title="Reagendar"
+                    >
+                      <RefreshCw size={18} />
+                    </button>
+                  )}
 
                   <a 
                     href={`https://wa.me/${(apt.client_details?.phone || '').replace(/\D/g, '')}`}

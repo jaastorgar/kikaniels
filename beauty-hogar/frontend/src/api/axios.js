@@ -1,41 +1,47 @@
 import axios from 'axios';
+import { Capacitor } from '@capacitor/core';
 
-// Creamos la instancia centralizada de Axios
+const isNative = Capacitor.isNativePlatform();
+const rawApiUrl = (import.meta.env.VITE_API_URL || 'http://10.0.2.2:8000').replace(/\/+$/, '');
+
+// En web local usamos '/api' (proxy de Vite). En Capacitor nativo usamos la URL completa del backend.
+export const API_BASE_URL = isNative ? `${rawApiUrl}/api` : '/api';
+
+export const getWebSocketUrl = (token) => {
+  if (isNative) {
+    const wsBase = rawApiUrl.replace(/^http/, 'ws');
+    return `${wsBase}/ws/appointments/?token=${token}`;
+  }
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}/ws/appointments/?token=${token}`;
+};
+
+// Instancia centralizada de Axios
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   }
 });
 
-/* INTERCEPTOR DE PETICIONES:
-   Este bloque se ejecuta automáticamente antes de que cada petición salga al servidor.
-   Sirve para inyectar el token de seguridad (JWT) sin tener que escribirlo en cada archivo.
-*/
+// INTERCEPTOR DE PETICIONES: Inyecta el token JWT automáticamente
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
-      // Inyectamos el token en el formato estándar de Django Rest Framework
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
-    // Si hay un error antes de enviar la petición, lo rechazamos
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-/* INTERCEPTOR DE RESPUESTAS (Opcional pero recomendado):
-   Aquí puedes manejar errores globales, como cuando el token expira (401).
-*/
+// INTERCEPTOR DE RESPUESTAS
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Opcional: Podrías forzar el logout si el token ya no es válido
-      console.warn("Sesión expirada. Redirigiendo al login...");
+      console.warn("Sesión expirada. Redirigiendo al inicio de sesión...");
     }
     return Promise.reject(error);
   }

@@ -10,7 +10,7 @@ import {
   Users,
   Sparkles
 } from 'lucide-react'
-import api from "../../api/axios"
+import api, { getWebSocketUrl } from "../../api/axios"
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null)
@@ -43,8 +43,7 @@ export default function AdminDashboard() {
     const token = localStorage.getItem('token')
     if (!token) return
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const socket = new WebSocket(`${protocol}//${window.location.host}/ws/appointments/?token=${token}`)
+    const socket = new WebSocket(getWebSocketUrl(token))
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data)
@@ -66,6 +65,17 @@ export default function AdminDashboard() {
       completed: 'bg-gray-100 text-gray-600 border-gray-200'
     }
     return colors[status] || colors.pending
+  }
+
+  const getStatusLabel = (status) => {
+    const labels = {
+      pending: 'Pendiente',
+      confirmed: 'Confirmada',
+      rescheduled: 'Reagendada',
+      cancelled: 'Cancelada',
+      completed: 'Completada'
+    }
+    return labels[status] || status
   }
 
   if (loading) {
@@ -163,7 +173,7 @@ export default function AdminDashboard() {
                   </td>
                   <td className="py-6 px-10 text-right">
                     <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border-2 shadow-sm ${getStatusColor(apt.status)}`}>
-                      {apt.status}
+                      {getStatusLabel(apt.status)}
                     </span>
                   </td>
                 </tr>

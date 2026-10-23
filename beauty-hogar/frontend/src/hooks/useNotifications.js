@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { getWebSocketUrl } from '../api/axios';
 
 export const useNotifications = () => {
   const { user, token } = useAuth();
@@ -10,10 +11,7 @@ export const useNotifications = () => {
     const activeToken = token || localStorage.getItem('token');
     if (!user || !activeToken) return;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socketUrl = `${protocol}//${window.location.host}/ws/appointments/?token=${activeToken}`;
-    
-    const socket = new WebSocket(socketUrl);
+    const socket = new WebSocket(getWebSocketUrl(activeToken));
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);

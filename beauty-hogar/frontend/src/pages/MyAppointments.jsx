@@ -9,9 +9,7 @@ import {
   RefreshCw, 
   MessageCircle, 
   Loader2,
-  ChevronRight,
-  User,
-  ExternalLink
+  User
 } from 'lucide-react'
 import { format, isValid, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -62,6 +60,17 @@ export default function MyAppointments() {
       completed: 'bg-[#F3E8FF] text-[#4A008B] border-[#4A008B]/10'
     }
     return styles[status] || styles.pending
+  }
+
+  const getStatusLabel = (status) => {
+    const labels = {
+      pending: 'Pendiente',
+      confirmed: 'Confirmada',
+      rescheduled: 'Reagendada',
+      cancelled: 'Cancelada',
+      completed: 'Completada'
+    }
+    return labels[status] || status
   }
 
   const getStatusIcon = (status) => {
@@ -198,7 +207,7 @@ export default function MyAppointments() {
                 <div className="flex flex-wrap items-center gap-4 pt-6 lg:pt-0 border-t lg:border-t-0 border-gray-100">
                   <span className={`px-5 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest border-2 flex items-center gap-2 shadow-sm ${getStatusStyles(appointment.status)}`}>
                     {getStatusIcon(appointment.status)}
-                    {appointment.status}
+                    {getStatusLabel(appointment.status)}
                   </span>
                   
                   <a
