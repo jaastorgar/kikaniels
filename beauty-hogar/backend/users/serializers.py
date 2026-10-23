@@ -14,6 +14,20 @@ class UserSerializer(serializers.ModelSerializer):
         # SEGURIDAD: Evita escalación de privilegios (Mass Assignment) en /api/users/profile/
         read_only_fields = ('id', 'email', 'role', 'is_admin', 'date_joined')
 
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True, required=True)
+    new_password = serializers.CharField(write_only=True, required=True, min_length=8)
+    new_password_confirm = serializers.CharField(write_only=True, required=True)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError({"new_password": "Las contraseñas nuevas no coinciden."})
+        try:
+            validate_password(attrs['new_password'], user=self.context.get('user'))
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({"new_password": list(e.messages)})
+        return attrs
+
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)

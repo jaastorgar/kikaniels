@@ -4,7 +4,12 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import User
-from .serializers import UserSerializer, UserRegistrationSerializer, AdminRegistrationSerializer
+from .serializers import (
+    UserSerializer,
+    ChangePasswordSerializer,
+    UserRegistrationSerializer,
+    AdminRegistrationSerializer,
+)
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     throttle_classes = [ScopedRateThrottle]
@@ -18,8 +23,10 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             'email': user.email,
             'first_name': user.first_name,
             'last_name': user.last_name,
+            'phone': user.phone,
             'role': user.role,
-            'is_admin': user.is_admin
+            'is_admin': user.is_admin,
+            'date_joined': user.date_joined,
         }
         return response
 
@@ -61,6 +68,24 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     
     def get_object(self):
         return self.request.user
+
+class ChangePasswordView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        serializer = ChangePasswordSerializer(data=request.data, context={'user': user})
+        serializer.is_valid(raise_exception=True)
+
+        if not user.check_password(serializer.validated_data['current_password']):
+            return Response(
+                {'current_password': ['La contraseña actual es incorrecta.']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+        return Response({'message': 'Contraseña actualizada exitosamente.'})
 
 class CheckAdminExistsView(APIView):
     permission_classes = [permissions.AllowAny]

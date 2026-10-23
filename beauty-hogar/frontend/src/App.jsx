@@ -10,6 +10,7 @@ import Services from './pages/Services'
 import BookAppointment from './pages/BookAppointment'
 import MyAppointments from './pages/MyAppointments'
 import Notifications from './pages/Notifications'
+import Profile from './pages/Profile'
 
 // Páginas de Administrador
 import AdminDashboard from './pages/admin/Dashboard'
@@ -53,6 +54,7 @@ function App() {
             <Route path="book/:serviceId?" element={<BookAppointment />} />
             <Route path="my-appointments" element={<MyAppointments />} />
             <Route path="notifications" element={<Notifications />} />
+            <Route path="profile" element={<Profile />} />
           </Route>
         </Route>
 
@@ -65,6 +67,7 @@ function App() {
             <Route path="timeslots" element={<AdminTimeSlots />} />
             <Route path="clients" element={<AdminClients />} />
             <Route path="notifications" element={<AdminNotifications />} />
+            <Route path="profile" element={<AdminProfileWrapper />} />
           </Route>
         </Route>
 
@@ -73,6 +76,10 @@ function App() {
       </Routes>
     </Router>
   )
+}
+
+function AdminProfileWrapper() {
+  return <Profile />
 }
 
 export default App

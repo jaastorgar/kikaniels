@@ -2,7 +2,13 @@ import axios from 'axios';
 import { Capacitor } from '@capacitor/core';
 
 const isNative = Capacitor.isNativePlatform();
-const rawApiUrl = (import.meta.env.VITE_API_URL || 'http://10.0.2.2:8000').replace(/\/+$/, '');
+const platform = Capacitor.getPlatform();
+let rawApiUrl = (import.meta.env.VITE_API_URL || 'http://10.0.2.2:8000').replace(/\/+$/, '');
+
+// En Android Emulador, localhost/127.0.0.1 apunta al teléfono mismo; 10.0.2.2 apunta al PC anfitrión.
+if (isNative && platform === 'android') {
+  rawApiUrl = rawApiUrl.replace('localhost', '10.0.2.2').replace('127.0.0.1', '10.0.2.2');
+}
 
 // En web local usamos '/api' (proxy de Vite). En Capacitor nativo usamos la URL completa del backend.
 export const API_BASE_URL = isNative ? `${rawApiUrl}/api` : '/api';

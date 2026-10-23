@@ -12,9 +12,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'clave-de-emergencia-cambiar-en-prod')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,10.0.2.2').split(',') if h.strip()]
-if DEBUG and '*' not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.extend(['10.0.2.2', '0.0.0.0'])
+ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,10.0.2.2,192.168.18.199').split(',') if h.strip()]
+if DEBUG:
+    ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'daphne',
@@ -133,10 +133,12 @@ SIMPLE_JWT = {
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
-# CORS (Web + Capacitor Android/iOS Native WebViews)
+# CORS (Web + Capacitor Android/iOS Native WebViews + Red Local Wi-Fi)
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://192.168.18.199:5173",
     "http://localhost",
     "https://localhost",
     "capacitor://localhost",

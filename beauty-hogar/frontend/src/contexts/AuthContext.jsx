@@ -22,16 +22,30 @@ export function AuthProvider({ children }) {
 
   const fetchProfile = async () => {
     try {
-      // Usamos la ruta limpia para evitar el error de doble /api/
       const response = await api.get('users/profile/')
       setUser(response.data)
+      return response.data
     } catch (error) {
       console.error("Error al cargar perfil:", error)
       localStorage.removeItem('token')
       setToken(null)
       setUser(null)
+      return null
     } finally {
       setLoading(false)
+    }
+  }
+
+  const updateProfile = async (profileData) => {
+    try {
+      const response = await api.patch('users/profile/', profileData)
+      setUser(response.data)
+      return { success: true, user: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data || 'No se pudo actualizar el perfil'
+      }
     }
   }
 
@@ -84,16 +98,14 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    fetchProfile,
+    updateProfile,
     loading,
-    // Verificación de rol basada en tu modelo de Django
     isAdmin: user?.role === 'admin' || Boolean(user?.is_admin)
   }
 
   return (
     <AuthContext.Provider value={value}>
-      {/* Si está cargando, mostramos un spinner con tus colores corporativos.
-        Esto evita que el contenido principal falle por falta de datos del usuario.
-      */}
       {!loading ? (
         children
       ) : (

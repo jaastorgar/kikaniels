@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, Calendar, Clock, X, Loader2, Sparkles } from 'lucide-react'
-import { toast } from 'sonner' // Asegúrate de tener sonner o cambia a tu sistema de avisos
+import { toast } from 'sonner'
 import api from "../../api/axios"
 
 export default function AdminTimeSlots() {
@@ -17,7 +17,7 @@ export default function AdminTimeSlots() {
     date: '',
     start_time: '',
     end_time: '',
-    interval: 60 // Coincide con el backend 'interval'
+    interval: 60
   })
 
   useEffect(() => {
@@ -26,11 +26,8 @@ export default function AdminTimeSlots() {
 
   const fetchTimeSlots = async () => {
     try {
-      /* CORRECCIÓN: Eliminamos el '/api' del inicio. 
-         Axios inyecta automáticamente el prefijo configurado. 
-      */
       const response = await api.get('appointments/time-slots/')
-      setTimeSlots(response.data)
+      setTimeSlots(Array.isArray(response.data) ? response.data : [])
     } catch (error) {
       console.error('Error al cargar horarios:', error)
     } finally {
@@ -41,28 +38,29 @@ export default function AdminTimeSlots() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      // CORRECCIÓN: Ruta limpia
       await api.post('appointments/time-slots/', formData)
       setShowModal(false)
       setFormData({ date: '', start_time: '', end_time: '' })
       toast.success('Horario creado exitosamente')
       fetchTimeSlots()
     } catch (error) {
-      toast.error('Error al crear el horario')
+      const msg = error.response?.data
+        ? Object.values(error.response.data).flat().join(' ')
+        : 'Error al crear el horario'
+      toast.error(msg)
     }
   }
 
   const handleBulkCreate = async (e) => {
     e.preventDefault()
     try {
-      // CORRECCIÓN: Ruta limpia
       await api.post('appointments/time-slots/bulk-create/', bulkData)
       setShowBulkModal(false)
       setBulkData({ date: '', start_time: '', end_time: '', interval: 60 })
       toast.success('Horarios generados exitosamente')
       fetchTimeSlots()
     } catch (error) {
-      toast.error('Error en la creación masiva')
+      toast.error(error.response?.data?.error || 'Error en la creación masiva')
     }
   }
 
@@ -70,7 +68,6 @@ export default function AdminTimeSlots() {
     if (!confirm('¿Estás seguro de eliminar este horario?')) return
     
     try {
-      // CORRECCIÓN: Ruta limpia
       await api.delete(`appointments/time-slots/${id}/`)
       toast.success('Horario eliminado')
       fetchTimeSlots()
@@ -88,141 +85,140 @@ export default function AdminTimeSlots() {
     return colors[status] || colors.available
   }
 
+  const getStatusLabel = (status) => {
+    if (status === 'available') return 'Disponible'
+    if (status === 'occupied') return 'Ocupado'
+    return 'Bloqueado'
+  }
+
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <Loader2 className="w-12 h-12 text-[#4A008B] animate-spin" />
-        <p className="text-[#555555] font-medium">Sincronizando disponibilidad...</p>
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <Loader2 className="w-10 h-10 text-[#4A008B] animate-spin" />
+        <p className="text-[#555555] text-xs font-medium">Sincronizando disponibilidad...</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-5 pb-10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[#2C0140]">Gestión de Horarios</h1>
-          <p className="text-[#555555] text-sm">Configura los bloques de atención para el equipo</p>
+          <p className="text-[#555555] text-xs">Configura tus bloques de atención</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <button
             onClick={() => setShowBulkModal(true)}
-            className="px-4 py-2 bg-white border border-[#0AE8C6] text-[#2C0140] rounded-xl hover:bg-[#0AE8C6]/10 transition-all flex items-center gap-2 font-bold text-sm shadow-sm"
+            className="flex-1 sm:flex-none justify-center px-3.5 py-2.5 bg-white border border-[#0AE8C6] text-[#2C0140] rounded-xl hover:bg-[#0AE8C6]/10 transition-all flex items-center gap-1.5 font-bold text-xs shadow-2xs"
           >
-            <Sparkles className="w-5 h-5 text-[#0AE8C6]" />
+            <Sparkles className="w-4 h-4 text-[#0AE8C6]" />
             Crear Múltiples
           </button>
           <button
             onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-[#4A008B] text-white rounded-xl hover:bg-[#38006B] transition-all flex items-center gap-2 font-bold text-sm shadow-lg"
+            className="flex-1 sm:flex-none justify-center px-3.5 py-2.5 bg-[#4A008B] text-white rounded-xl hover:bg-[#38006B] transition-all flex items-center gap-1.5 font-bold text-xs shadow-md"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4" />
             Nuevo Horario
           </button>
         </div>
       </div>
 
-      <div className="bg-white border border-[#e6e6e6] rounded-2xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-[#F3E8FF]/50 border-b border-[#e6e6e6]">
-              <tr>
-                <th className="py-4 px-6 text-xs font-bold text-[#4A008B] uppercase tracking-wider">Fecha</th>
-                <th className="py-4 px-6 text-xs font-bold text-[#4A008B] uppercase tracking-wider">Hora Inicio</th>
-                <th className="py-4 px-6 text-xs font-bold text-[#4A008B] uppercase tracking-wider">Hora Fin</th>
-                <th className="py-4 px-6 text-xs font-bold text-[#4A008B] uppercase tracking-wider">Estado</th>
-                <th className="py-4 px-6 text-xs font-bold text-[#4A008B] uppercase tracking-wider text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#e6e6e6]">
-              {timeSlots.map((slot) => (
-                <tr key={slot.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="py-4 px-6 font-bold text-[#2C0140]">{slot.date}</td>
-                  <td className="py-4 px-6 text-[#555555] flex items-center gap-2">
-                    <Clock size={14} className="text-[#4A008B]" />
-                    {slot.start_time.substring(0, 5)}
-                  </td>
-                  <td className="py-4 px-6 text-[#555555]">{slot.end_time.substring(0, 5)}</td>
-                  <td className="py-4 px-6">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${getStatusColor(slot.status)}`}>
-                      {slot.status === 'available' ? 'Disponible' : 
-                       slot.status === 'occupied' ? 'Ocupado' : 'Bloqueado'}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6 text-right">
-                    <button
-                      onClick={() => handleDelete(slot.id)}
-                      className="p-2 text-red-400 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-30"
-                      disabled={slot.status === 'occupied'}
-                      title={slot.status === 'occupied' ? "No se puede eliminar un horario ocupado" : "Eliminar"}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {timeSlots.length === 0 && (
-            <div className="py-12 text-center text-[#555555] text-sm italic">
-              No hay horarios configurados para los próximos días.
-            </div>
-          )}
+      {/* Vista de Tarjetas Amigable para Móviles y Escritorio */}
+      {timeSlots.length === 0 ? (
+        <div className="bg-white border border-dashed border-[#e6e6e6] rounded-3xl py-14 text-center text-[#555555] text-xs">
+          No hay horarios configurados. Usa "Crear Múltiples" o "Nuevo Horario".
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {timeSlots.map((slot) => (
+            <div
+              key={slot.id}
+              className="bg-white border border-[#e6e6e6] rounded-2xl p-4 flex items-center justify-between gap-3 shadow-2xs"
+            >
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Calendar size={14} className="text-[#4A008B]" />
+                  <span className="font-bold text-sm text-[#2C0140]">{slot.date}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-[#555555] font-medium">
+                  <Clock size={13} className="text-[#0AE8C6]" />
+                  <span>{slot.start_time.substring(0, 5)} - {slot.end_time.substring(0, 5)} hrs</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusColor(slot.status)}`}>
+                  {getStatusLabel(slot.status)}
+                </span>
+                <button
+                  onClick={() => handleDelete(slot.id)}
+                  className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-30"
+                  disabled={slot.status === 'occupied'}
+                  title={slot.status === 'occupied' ? "Horario ocupado" : "Eliminar"}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Modal Individual */}
       {showModal && (
-        <div className="fixed inset-0 bg-[#2C0140]/60 flex items-center justify-center p-4 z-[60] backdrop-blur-sm">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-[#e6e6e6] bg-[#F3E8FF]">
-              <h3 className="text-xl font-bold text-[#2C0140]">Nuevo Horario</h3>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-white rounded-full transition-colors">
+        <div className="fixed inset-0 bg-[#2C0140]/60 flex items-end sm:items-center justify-center p-0 sm:p-4 z-[60] backdrop-blur-xs">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-[#e6e6e6] bg-[#F3E8FF]/50">
+              <h3 className="text-lg font-bold text-[#2C0140]">Nuevo Horario</h3>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-white rounded-full">
                 <X className="w-5 h-5 text-[#2C0140]" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-[#555555] uppercase mb-1.5">Fecha</label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4A008B]" />
-                  <input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full pl-10 pr-4 py-2 border border-[#e6e6e6] rounded-xl focus:ring-2 focus:ring-[#4A008B] outline-none"
-                    required
-                  />
-                </div>
+                <label className="block text-xs font-bold text-[#555555] uppercase mb-1">Fecha</label>
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="w-full px-3.5 py-2.5 border border-[#e6e6e6] rounded-xl outline-none text-sm"
+                  required
+                />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-[#555555] uppercase mb-1.5">Inicio</label>
+                  <label className="block text-xs font-bold text-[#555555] uppercase mb-1">Inicio</label>
                   <input
                     type="time"
                     value={formData.start_time}
                     onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                    className="w-full px-4 py-2 border border-[#e6e6e6] rounded-xl outline-none"
+                    className="w-full px-3.5 py-2.5 border border-[#e6e6e6] rounded-xl outline-none text-sm"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#555555] uppercase mb-1.5">Fin</label>
+                  <label className="block text-xs font-bold text-[#555555] uppercase mb-1">Fin</label>
                   <input
                     type="time"
                     value={formData.end_time}
                     onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                    className="w-full px-4 py-2 border border-[#e6e6e6] rounded-xl outline-none"
+                    className="w-full px-3.5 py-2.5 border border-[#e6e6e6] rounded-xl outline-none text-sm"
                     required
                   />
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-6 border-t border-[#e6e6e6]">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2 font-bold text-[#555555] hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
-                <button type="submit" className="flex-1 py-2 bg-[#4A008B] text-white font-bold rounded-xl shadow-lg hover:bg-[#38006B] transition-colors">Crear</button>
+              <div className="flex gap-3 pt-4 border-t border-[#e6e6e6]">
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2.5 font-bold text-sm text-[#555555] hover:bg-gray-100 rounded-xl">
+                  Cancelar
+                </button>
+                <button type="submit" className="flex-1 py-2.5 bg-[#4A008B] text-white font-bold text-sm rounded-xl shadow-md">
+                  Crear
+                </button>
               </div>
             </form>
           </div>
@@ -231,56 +227,56 @@ export default function AdminTimeSlots() {
 
       {/* Modal Masivo */}
       {showBulkModal && (
-        <div className="fixed inset-0 bg-[#2C0140]/60 flex items-center justify-center p-4 z-[60] backdrop-blur-sm">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-[#e6e6e6] bg-[#0AE8C6]/10">
-              <h3 className="text-xl font-bold text-[#2C0140]">Creación Masiva</h3>
-              <button onClick={() => setShowBulkModal(false)} className="p-2 hover:bg-white rounded-full transition-colors">
+        <div className="fixed inset-0 bg-[#2C0140]/60 flex items-end sm:items-center justify-center p-0 sm:p-4 z-[60] backdrop-blur-xs">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-[#e6e6e6] bg-[#0AE8C6]/15">
+              <h3 className="text-lg font-bold text-[#2C0140]">Creación Masiva</h3>
+              <button onClick={() => setShowBulkModal(false)} className="p-2 hover:bg-white rounded-full">
                 <X className="w-5 h-5 text-[#2C0140]" />
               </button>
             </div>
 
-            <form onSubmit={handleBulkCreate} className="p-6 space-y-4">
+            <form onSubmit={handleBulkCreate} className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-[#555555] uppercase mb-1.5">Fecha</label>
+                <label className="block text-xs font-bold text-[#555555] uppercase mb-1">Fecha</label>
                 <input
                   type="date"
                   value={bulkData.date}
                   onChange={(e) => setBulkData({ ...bulkData, date: e.target.value })}
-                  className="w-full px-4 py-2 border border-[#e6e6e6] rounded-xl outline-none"
+                  className="w-full px-3.5 py-2.5 border border-[#e6e6e6] rounded-xl outline-none text-sm"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-[#555555] uppercase mb-1.5">Inicio Jornada</label>
+                  <label className="block text-xs font-bold text-[#555555] uppercase mb-1">Inicio Jornada</label>
                   <input
                     type="time"
                     value={bulkData.start_time}
                     onChange={(e) => setBulkData({ ...bulkData, start_time: e.target.value })}
-                    className="w-full px-4 py-2 border border-[#e6e6e6] rounded-xl outline-none"
+                    className="w-full px-3.5 py-2.5 border border-[#e6e6e6] rounded-xl outline-none text-sm"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#555555] uppercase mb-1.5">Fin Jornada</label>
+                  <label className="block text-xs font-bold text-[#555555] uppercase mb-1">Fin Jornada</label>
                   <input
                     type="time"
                     value={bulkData.end_time}
                     onChange={(e) => setBulkData({ ...bulkData, end_time: e.target.value })}
-                    className="w-full px-4 py-2 border border-[#e6e6e6] rounded-xl outline-none"
+                    className="w-full px-3.5 py-2.5 border border-[#e6e6e6] rounded-xl outline-none text-sm"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#555555] uppercase mb-1.5">Intervalo</label>
+                <label className="block text-xs font-bold text-[#555555] uppercase mb-1">Intervalo</label>
                 <select
                   value={bulkData.interval}
                   onChange={(e) => setBulkData({ ...bulkData, interval: parseInt(e.target.value) })}
-                  className="w-full px-4 py-2 border border-[#e6e6e6] rounded-xl outline-none font-bold text-[#4A008B]"
+                  className="w-full px-3.5 py-2.5 border border-[#e6e6e6] rounded-xl outline-none font-bold text-sm text-[#4A008B]"
                 >
                   <option value={30}>30 minutos</option>
                   <option value={60}>1 hora (Estándar)</option>
@@ -289,9 +285,13 @@ export default function AdminTimeSlots() {
                 </select>
               </div>
 
-              <div className="flex gap-3 pt-6 border-t border-[#e6e6e6]">
-                <button type="button" onClick={() => setShowBulkModal(false)} className="flex-1 py-2 font-bold text-[#555555] hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
-                <button type="submit" className="flex-1 py-2 bg-[#0AE8C6] text-[#2C0140] font-bold rounded-xl shadow-lg hover:bg-[#08D1B3] transition-colors">Generar</button>
+              <div className="flex gap-3 pt-4 border-t border-[#e6e6e6]">
+                <button type="button" onClick={() => setShowBulkModal(false)} className="flex-1 py-2.5 font-bold text-sm text-[#555555] hover:bg-gray-100 rounded-xl">
+                  Cancelar
+                </button>
+                <button type="submit" className="flex-1 py-2.5 bg-[#0AE8C6] text-[#2C0140] font-bold text-sm rounded-xl shadow-md">
+                  Generar
+                </button>
               </div>
             </form>
           </div>
