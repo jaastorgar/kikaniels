@@ -79,7 +79,7 @@ export function AuthProvider({ children }) {
     logout,
     loading,
     // Verificación de rol basada en tu modelo de Django
-    isAdmin: user?.role === 'admin' 
+    isAdmin: user?.role === 'admin' || Boolean(user?.is_admin)
   }
 
   return (

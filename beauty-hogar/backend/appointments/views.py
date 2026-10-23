@@ -19,7 +19,11 @@ from .serializers import (
 class IsAdminUser(permissions.BasePermission):
     """Permiso para usuarios con rol admin."""
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == 'admin'
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and (request.user.role == 'admin' or request.user.is_admin)
+        )
 
 # --- VIEWSETS CON AISLAMIENTO DE DATOS ---
 
@@ -28,7 +32,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_authenticated and user.role == 'admin':
+        if user.is_authenticated and (user.role == 'admin' or user.is_admin):
             # MULTI-TENANCY: El admin solo ve SUS servicios
             return Service.objects.filter(provider=user)
         return Service.objects.filter(is_active=True)
@@ -53,7 +57,7 @@ class TimeSlotViewSet(viewsets.ModelViewSet):
         user = self.request.user
         
         # 1. Si es Admin, ve su propia agenda de gestión
-        if user.is_authenticated and user.role == 'admin':
+        if user.is_authenticated and (user.role == 'admin' or user.is_admin):
             return TimeSlot.objects.filter(provider=user)
         
         # 2. FILTRADO PARA CLIENTES (Solución definitiva a la consecuencia de agenda)
@@ -88,7 +92,7 @@ class TimeSlotViewSet(viewsets.ModelViewSet):
         date = request.query_params.get('date')
         provider_id = request.query_params.get('provider_id')
 
-        if user.is_authenticated and user.role == 'admin' and not provider_id:
+        if user.is_authenticated and (user.role == 'admin' or user.is_admin) and not provider_id:
             queryset = queryset.filter(provider=user)
         elif provider_id:
             queryset = queryset.filter(provider_id=provider_id)
@@ -106,13 +110,19 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     serializer_class = AppointmentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_permissions(self):
+        # SEGURIDAD: Solo un administrador puede modificar o eliminar registros directamente
+        if self.action in ['update', 'partial_update', 'destroy', 'confirm', 'complete', 'reschedule']:
+            return [IsAdminUser()]
+        return [permissions.IsAuthenticated()]
+
     def get_queryset(self):
         user = self.request.user
         queryset = Appointment.objects.select_related(
             'client', 'service', 'timeslot'
         ).order_by('-created_at')
 
-        if user.role == 'admin':
+        if user.role == 'admin' or user.is_admin:
             # MULTI-TENANCY: El admin solo ve citas de SUS servicios
             return queryset.filter(service__provider=user)
         return queryset.filter(client=user)
@@ -120,9 +130,20 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(client=self.request.user)
 
+    def perform_destroy(self, instance):
+        with transaction.atomic():
+            if instance.status not in ['cancelled', 'completed']:
+                TimeSlot.objects.filter(id=instance.timeslot_id).update(status='available')
+            instance.delete()
+
     @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
     def confirm(self, request, pk=None):
         appointment = self.get_object()
+        if appointment.status in ['cancelled', 'completed']:
+            return Response(
+                {'error': 'No se puede confirmar una cita cancelada o completada.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         appointment.status = 'confirmed'
         appointment.save()
         return Response({'status': 'cita confirmada'})
@@ -130,6 +151,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
         appointment = self.get_object()
+        if appointment.status in ['completed', 'cancelled']:
+            return Response(
+                {'error': 'No se puede cancelar una cita que ya fue completada o cancelada.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         appointment.status = 'cancelled'
         appointment.save()
         return Response({'status': 'cita cancelada'})
@@ -137,6 +163,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
     def complete(self, request, pk=None):
         appointment = self.get_object()
+        if appointment.status == 'cancelled':
+            return Response(
+                {'error': 'No se puede completar una cita cancelada.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         appointment.status = 'completed'
         appointment.save()
         return Response({'status': 'cita completada'})
@@ -144,6 +175,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
     def reschedule(self, request, pk=None):
         appointment = self.get_object()
+        if appointment.status in ['completed', 'cancelled']:
+            return Response(
+                {'error': 'No se puede reagendar una cita completada o cancelada.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         new_slot_id = request.data.get('new_time_slot_id')
         if not new_slot_id:
             return Response(
@@ -186,6 +223,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 class NotificationViewSet(viewsets.ModelViewSet):
     serializer_class = NotificationSerializer
     permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def get_queryset(self):
         # Cada usuario ve solo sus notificaciones
@@ -233,10 +271,19 @@ class BulkCreateTimeSlotsView(APIView):
         end_time_str = request.data.get('end_time')
         interval = int(request.data.get('interval', 60))
 
+        if interval <= 0:
+            return Response({"error": "El intervalo debe ser mayor a 0 minutos."}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
             date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            if date < timezone.now().date():
+                return Response({"error": "No se pueden crear horarios en fechas pasadas."}, status=status.HTTP_400_BAD_REQUEST)
+
             current_time = datetime.strptime(start_time_str, '%H:%M')
             end_time = datetime.strptime(end_time_str, '%H:%M')
+
+            if current_time >= end_time:
+                return Response({"error": "La hora de término debe ser posterior a la hora de inicio."}, status=status.HTTP_400_BAD_REQUEST)
 
             created_slots = 0
             while current_time + timedelta(minutes=interval) <= end_time:

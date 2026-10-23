@@ -1,0 +1,22 @@
+# Entornos virtuales y Python
+env/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Variables de entorno y secretos
+.env
+*.env
+!.env.example
+
+# Base de datos y archivos subidos
+*.sqlite3
+media/
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+.DS_Store

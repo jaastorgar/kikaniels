@@ -1,14 +1,18 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import User
 from .serializers import UserSerializer, UserRegistrationSerializer, AdminRegistrationSerializer
 
 class CustomTokenObtainPairView(TokenObtainPairView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth'
+
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
-        user = User.objects.get(email=request.data['email'])
+        user = User.objects.get(email__iexact=request.data.get('email', ''))
         response.data['user'] = {
             'id': user.id,
             'email': user.email,
@@ -23,6 +27,8 @@ class RegisterClientView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth'
     
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -37,6 +43,8 @@ class RegisterAdminView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = AdminRegistrationSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'admin_register'
     
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -58,5 +66,5 @@ class CheckAdminExistsView(APIView):
     permission_classes = [permissions.AllowAny]
     
     def get(self, request):
-        admin_exists = User.objects.filter(is_admin=True).exists()
+        admin_exists = User.objects.filter(role='admin', is_active=True).exists()
         return Response({'admin_exists': admin_exists})

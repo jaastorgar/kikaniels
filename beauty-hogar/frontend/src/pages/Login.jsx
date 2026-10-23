@@ -19,7 +19,8 @@ export default function Login() {
     const result = await login(formData.email, formData.password)
     
     if (result.success) {
-      navigate(result.user.is_admin ? '/admin' : '/')
+      const isAdminUser = result.user?.role === 'admin' || Boolean(result.user?.is_admin)
+      navigate(isAdminUser ? '/admin' : '/')
     } else {
       setError(result.error)
     }
@@ -106,11 +107,6 @@ export default function Login() {
               </Link>
             </p>
           </div>
-        </div>
-
-        <div className="mt-8 text-center text-sm text-gray-500">
-          <p>¿Eres administrador? Usa las credenciales de admin</p>
-          <p className="mt-1">Email: kika@beautyhogar.cl</p>
         </div>
       </div>
     </div>

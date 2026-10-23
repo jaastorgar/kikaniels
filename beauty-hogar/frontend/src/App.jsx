@@ -21,7 +21,7 @@ import AdminNotifications from './pages/admin/Notifications'
 
 // Componente para proteger rutas según el estado de autenticación y rol
 function PrivateRoute({ adminOnly = false }) {
-  const { user, loading } = useAuth()
+  const { user, loading, isAdmin } = useAuth()
   
   if (loading) return (
     <div className="flex items-center justify-center h-screen bg-[#2C0140]">
@@ -31,8 +31,8 @@ function PrivateRoute({ adminOnly = false }) {
 
   if (!user) return <Navigate to="/login" />
   
-  // Verificación de rol para acceso administrativo
-  if (adminOnly && user.role !== 'admin') return <Navigate to="/" />
+  // Verificación unificada de rol para acceso administrativo
+  if (adminOnly && !isAdmin) return <Navigate to="/" />
   
   return <Outlet />
 }

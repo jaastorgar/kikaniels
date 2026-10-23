@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 from .models import Service, TimeSlot, Appointment, Notification
 from users.serializers import UserSerializer
@@ -21,6 +22,23 @@ class TimeSlotSerializer(serializers.ModelSerializer):
         fields = ['id', 'provider', 'date', 'start_time', 'end_time', 'status']
         read_only_fields = ['provider']
 
+    def validate(self, data):
+        start_time = data.get('start_time', getattr(self.instance, 'start_time', None))
+        end_time = data.get('end_time', getattr(self.instance, 'end_time', None))
+        date = data.get('date', getattr(self.instance, 'date', None))
+
+        if start_time and end_time and start_time >= end_time:
+            raise serializers.ValidationError(
+                {"end_time": "La hora de término debe ser posterior a la hora de inicio."}
+            )
+
+        if not self.instance and date and date < timezone.now().date():
+            raise serializers.ValidationError(
+                {"date": "No se pueden crear horarios en fechas pasadas."}
+            )
+
+        return data
+
 class AppointmentSerializer(serializers.ModelSerializer):
     # Detalles expandidos para facilitar el renderizado en React
     client_details = UserSerializer(source='client', read_only=True)
@@ -34,24 +52,33 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'total_price', 'notes', 'created_at', 'updated_at',
             'client_details', 'service_details', 'timeslot_details'
         ]
-        # SOLUCIÓN AL ERROR 400: Campos que el frontend NO debe enviar
+        # Campos que el frontend NO debe enviar ni sobreescribir
         read_only_fields = ['client', 'status', 'total_price', 'created_at', 'updated_at']
 
     def validate(self, data):
         """
-        Validaciones de integridad de negocio para Beauty Hogar.
+        Validaciones de integridad de negocio y seguridad para Beauty Hogar.
         """
         timeslot = data.get('timeslot')
+        service = data.get('service')
+
+        if service and not service.is_active:
+            raise serializers.ValidationError(
+                {"service": "Este servicio no se encuentra disponible actualmente."}
+            )
         
-        # 1. Validar disponibilidad solo si es una cita nueva
-        if not self.instance:  
+        # 1. Validar disponibilidad y fecha solo si es una cita nueva
+        if not self.instance and timeslot:  
             if timeslot.status != 'available':
                 raise serializers.ValidationError(
                     {"timeslot": "Lo sentimos, este horario ya fue reservado."}
                 )
+            if timeslot.date < timezone.now().date():
+                raise serializers.ValidationError(
+                    {"timeslot": "No se puede reservar un horario de una fecha pasada."}
+                )
         
         # 2. Validar Multi-tenancy: Servicio y Horario deben ser del mismo profesional
-        service = data.get('service')
         if service and timeslot and service.provider != timeslot.provider:
             raise serializers.ValidationError(
                 {"error": "El servicio y el horario deben pertenecer al mismo profesional."}
@@ -71,7 +98,7 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ['id', 'user', 'appointment', 'appointment_details', 'message', 'is_read', 'created_at']
-        read_only_fields = ['created_at']
+        read_only_fields = ['user', 'appointment', 'message', 'created_at']
 
 class DashboardStatsSerializer(serializers.Serializer):
     total_appointments = serializers.IntegerField()

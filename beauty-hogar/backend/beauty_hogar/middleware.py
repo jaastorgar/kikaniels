@@ -11,10 +11,10 @@ def get_user(token_key):
     try:
         # Validamos el token JWT
         token = AccessToken(token_key)
-        # Buscamos al usuario por el ID contenido en el token
-        return User.objects.get(id=token['user_id'])
+        # Buscamos al usuario activo por el ID contenido en el token
+        return User.objects.get(id=token['user_id'], is_active=True)
     except Exception:
-        # Si el token es inválido o expiró, devolvemos un usuario anónimo
+        # Si el token es inválido, expiró o el usuario está inactivo, devolvemos un usuario anónimo
         return AnonymousUser()
 
 class JWTAuthMiddleware:
