@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { Scissors, Eye, EyeOff, Loader2, CheckCircle } from 'lucide-react'
+import { Scissors, Eye, EyeOff, Loader2, CheckCircle, ShieldCheck, User } from 'lucide-react'
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -9,6 +9,8 @@ export default function Register() {
     last_name: '',
     email: '',
     phone: '',
+    role: 'client',
+    secret_key: '',
     password: '',
     password_confirm: ''
   })
@@ -32,6 +34,12 @@ export default function Register() {
 
     if (formData.password !== formData.password_confirm) {
       setError('Las contraseñas no coinciden')
+      setLoading(false)
+      return
+    }
+
+    if (formData.role === 'admin' && !formData.secret_key.trim()) {
+      setError('Debes ingresar la clave secreta de administrador')
       setLoading(false)
       return
     }
@@ -75,6 +83,53 @@ export default function Register() {
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
                 {error}
+              </div>
+            )}
+
+            {/* Selector de Rol */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Cuenta (Rol)</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, role: 'client', secret_key: '' })}
+                  className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border text-sm font-bold transition-all ${
+                    formData.role === 'client'
+                      ? 'bg-[#4A008B] text-white border-[#4A008B] shadow-md'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-[#4A008B]/40'
+                  }`}
+                >
+                  <User className="w-4 h-4" />
+                  Cliente
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, role: 'admin' })}
+                  className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border text-sm font-bold transition-all ${
+                    formData.role === 'admin'
+                      ? 'bg-[#4A008B] text-white border-[#4A008B] shadow-md'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-[#4A008B]/40'
+                  }`}
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  Admin
+                </button>
+              </div>
+            </div>
+
+            {formData.role === 'admin' && (
+              <div className="p-3 bg-purple-50/70 border border-purple-200 rounded-xl">
+                <label className="block text-xs font-bold text-[#4A008B] uppercase tracking-wider mb-1">
+                  Clave Secreta de Administrador
+                </label>
+                <input
+                  type="password"
+                  value={formData.secret_key}
+                  onChange={(e) => setFormData({ ...formData, secret_key: e.target.value })}
+                  className="input-field"
+                  placeholder="Ingresa BEAUTY_ADMIN_SECRET"
+                  required
+                />
               </div>
             )}
 

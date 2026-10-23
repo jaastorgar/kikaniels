@@ -1,4 +1,4 @@
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, Group
 from django.db import models
 from django.utils import timezone
 from .managers import UserManager
@@ -45,4 +45,12 @@ class User(AbstractBaseUser, PermissionsMixin):
             self.is_staff = True
         else:
             self.is_admin = (self.role == 'admin')
+            if self.role == 'admin':
+                self.is_staff = True
         super().save(*args, **kwargs)
+        try:
+            role_group, _ = Group.objects.get_or_create(name=self.role)
+            if not self.groups.filter(name=self.role).exists():
+                self.groups.set([role_group])
+        except Exception:
+            pass

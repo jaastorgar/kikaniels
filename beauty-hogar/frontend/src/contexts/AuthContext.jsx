@@ -55,7 +55,14 @@ export function AuthProvider({ children }) {
 
   const register = async (userData) => {
     try {
-      const response = await api.post('users/register/client/', userData)
+      const isAdminRole = userData.role === 'admin'
+      const endpoint = isAdminRole ? 'users/register/admin/' : 'users/register/client/'
+      const payload = { ...userData }
+      delete payload.role
+      if (!isAdminRole) {
+        delete payload.secret_key
+      }
+      const response = await api.post(endpoint, payload)
       return { success: true, data: response.data }
     } catch (error) {
       return { 
