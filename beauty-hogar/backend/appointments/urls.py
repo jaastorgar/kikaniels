@@ -6,6 +6,7 @@ from .views import (
     NotificationViewSet,
     BulkCreateTimeSlotsView,
     AdminDashboardStatsView,
+    WorkerDashboardStatsView,
     NotificationUnreadCountView
 )
 
@@ -29,7 +30,6 @@ urlpatterns = [
         'post': 'create'
     }), name='time-slot-list'),
     
-    # Ruta para obtener slots disponibles (usada por BookAppointment.jsx y AdminAppointments.jsx)
     path('time-slots/available/', TimeSlotViewSet.as_view({
         'get': 'available'
     }), name='available-slots'),
@@ -56,11 +56,13 @@ urlpatterns = [
         'delete': 'destroy'
     }), name='appointment-detail'),
 
-    # Rutas para acciones administrativas (Confirmar, Cancelar, Completar, Reagendar)
+    # Acciones sobre citas
     path('<int:pk>/confirm/', AppointmentViewSet.as_view({'post': 'confirm'}), name='appointment-confirm'),
     path('<int:pk>/cancel/', AppointmentViewSet.as_view({'post': 'cancel'}), name='appointment-cancel'),
     path('<int:pk>/complete/', AppointmentViewSet.as_view({'post': 'complete'}), name='appointment-complete'),
     path('<int:pk>/reschedule/', AppointmentViewSet.as_view({'post': 'reschedule'}), name='appointment-reschedule'),
+    path('<int:pk>/assign-worker/', AppointmentViewSet.as_view({'post': 'assign_worker'}), name='appointment-assign-worker'),
+    path('<int:pk>/mark-paid/', AppointmentViewSet.as_view({'post': 'mark_paid'}), name='appointment-mark-paid'),
 
     # --- NOTIFICACIONES ---
     path('notifications/', NotificationViewSet.as_view({
@@ -80,4 +82,5 @@ urlpatterns = [
 
     # --- DASHBOARD Y ESTADÍSTICAS ---
     path('dashboard/stats/', AdminDashboardStatsView.as_view(), name='dashboard-stats'),
+    path('worker/stats/', WorkerDashboardStatsView.as_view(), name='worker-stats'),
 ]

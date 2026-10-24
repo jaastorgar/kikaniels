@@ -4,22 +4,35 @@ from .models import Service, TimeSlot, Appointment, Notification
 from users.serializers import UserSerializer
 
 class ServiceSerializer(serializers.ModelSerializer):
-    # Mostramos el email del proveedor pero lo marcamos como solo lectura
     provider_email = serializers.EmailField(source='provider.email', read_only=True)
+    provider_name = serializers.CharField(source='provider.full_name', read_only=True)
+    provider_specialty = serializers.SerializerMethodField()
 
     class Meta:
         model = Service
         fields = [
-            'id', 'provider', 'provider_email', 'name', 'description', 
-            'duration', 'price', 'is_active', 'image'
+            'id', 'provider', 'provider_email', 'provider_name', 'provider_specialty',
+            'name', 'description', 'duration', 'price', 'is_active', 'image'
         ]
-        # El provider se asigna automáticamente en la vista
         read_only_fields = ['provider']
 
+    def get_provider_specialty(self, obj):
+        if not obj.provider:
+            return 'Especialista'
+        if obj.provider.role == 'worker':
+            return obj.provider.specialty_display
+        return 'Especialista Principal'
+
 class TimeSlotSerializer(serializers.ModelSerializer):
+    provider_name = serializers.CharField(source='provider.full_name', read_only=True)
+    provider_specialty = serializers.CharField(source='provider.specialty_display', read_only=True)
+
     class Meta:
         model = TimeSlot
-        fields = ['id', 'provider', 'date', 'start_time', 'end_time', 'status']
+        fields = [
+            'id', 'provider', 'provider_name', 'provider_specialty',
+            'date', 'start_time', 'end_time', 'status'
+        ]
         read_only_fields = ['provider']
 
     def validate(self, data):
@@ -40,25 +53,28 @@ class TimeSlotSerializer(serializers.ModelSerializer):
         return data
 
 class AppointmentSerializer(serializers.ModelSerializer):
-    # Detalles expandidos para facilitar el renderizado en React
     client_details = UserSerializer(source='client', read_only=True)
     service_details = ServiceSerializer(source='service', read_only=True)
     timeslot_details = TimeSlotSerializer(source='timeslot', read_only=True)
+    worker_details = UserSerializer(source='worker', read_only=True)
 
     class Meta:
         model = Appointment
         fields = [
-            'id', 'client', 'service', 'timeslot', 'status', 
-            'total_price', 'notes', 'created_at', 'updated_at',
-            'client_details', 'service_details', 'timeslot_details'
+            'id', 'client', 'service', 'timeslot', 'worker', 'status', 
+            'total_price', 'commission_rate', 'worker_earnings', 'business_earnings',
+            'payout_status', 'paid_at',
+            'notes', 'created_at', 'updated_at',
+            'client_details', 'service_details', 'timeslot_details', 'worker_details'
         ]
-        # Campos que el frontend NO debe enviar ni sobreescribir
-        read_only_fields = ['client', 'status', 'total_price', 'created_at', 'updated_at']
+        read_only_fields = [
+            'client', 'status', 'total_price',
+            'commission_rate', 'worker_earnings', 'business_earnings',
+            'payout_status', 'paid_at',
+            'created_at', 'updated_at'
+        ]
 
     def validate(self, data):
-        """
-        Validaciones de integridad de negocio y seguridad para Beauty Hogar.
-        """
         timeslot = data.get('timeslot')
         service = data.get('service')
 
@@ -67,7 +83,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
                 {"service": "Este servicio no se encuentra disponible actualmente."}
             )
         
-        # 1. Validar disponibilidad y fecha solo si es una cita nueva
         if not self.instance and timeslot:  
             if timeslot.status != 'available':
                 raise serializers.ValidationError(
@@ -77,19 +92,15 @@ class AppointmentSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"timeslot": "No se puede reservar un horario de una fecha pasada."}
                 )
-        
-        # 2. Validar Multi-tenancy: Servicio y Horario deben ser del mismo profesional
-        if service and timeslot and service.provider != timeslot.provider:
-            raise serializers.ValidationError(
-                {"error": "El servicio y el horario deben pertenecer al mismo profesional."}
-            )
             
         return data
 
     def create(self, validated_data):
-        # Sincronizamos el precio de la cita con el precio actual del servicio
         service = validated_data.get('service')
+        timeslot = validated_data.get('timeslot')
         validated_data['total_price'] = service.price
+        if not validated_data.get('worker') and timeslot:
+            validated_data['worker'] = timeslot.provider
         return super().create(validated_data)
 
 class NotificationSerializer(serializers.ModelSerializer):

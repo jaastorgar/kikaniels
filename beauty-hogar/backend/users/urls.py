@@ -6,7 +6,11 @@ from .views import (
     RegisterAdminView,
     UserProfileView,
     ChangePasswordView,
-    CheckAdminExistsView
+    CheckAdminExistsView,
+    WorkerListCreateView,
+    WorkerDetailView,
+    WorkerPayAllPendingView,
+    PublicSpecialistsListView,
 )
 
 urlpatterns = [
@@ -17,4 +21,8 @@ urlpatterns = [
     path('profile/', UserProfileView.as_view(), name='profile'),
     path('change-password/', ChangePasswordView.as_view(), name='change_password'),
     path('check-admin/', CheckAdminExistsView.as_view(), name='check_admin'),
+    path('workers/', WorkerListCreateView.as_view(), name='worker_list_create'),
+    path('workers/<int:pk>/', WorkerDetailView.as_view(), name='worker_detail'),
+    path('workers/<int:pk>/pay-all/', WorkerPayAllPendingView.as_view(), name='worker_pay_all'),
+    path('specialists/', PublicSpecialistsListView.as_view(), name='public_specialists'),
 ]

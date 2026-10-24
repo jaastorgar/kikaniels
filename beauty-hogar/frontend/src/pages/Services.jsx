@@ -10,6 +10,9 @@ export default function Services() {
 
   useEffect(() => {
     fetchServices()
+    const handleRealtime = () => fetchServices()
+    window.addEventListener('beauty-realtime-update', handleRealtime)
+    return () => window.removeEventListener('beauty-realtime-update', handleRealtime)
   }, [])
 
   const fetchServices = async () => {
@@ -28,7 +31,9 @@ export default function Services() {
 
   const filtered = services.filter(s =>
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+    (s.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.provider_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.provider_specialty || '').toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   if (loading) {
@@ -82,9 +87,10 @@ export default function Services() {
                   <h3 className="text-base font-bold text-[#2C0140] font-tight leading-snug">
                     {service.name}
                   </h3>
-                  <span className="inline-flex items-center gap-1 text-[11px] text-[#555555] font-medium">
+                  <span className="inline-flex items-center gap-1 text-[11px] text-[#4A008B] font-semibold mt-0.5">
                     <User size={12} className="text-[#4A008B]" />
-                    {service.provider_email ? service.provider_email.split('@')[0] : 'Beauty Pro'}
+                    {service.provider_name || (service.provider_email ? service.provider_email.split('@')[0] : 'Beauty Pro')}
+                    {service.provider_specialty ? ` • ${service.provider_specialty}` : ''}
                   </span>
                 </div>
               </div>

@@ -22,6 +22,20 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    sourceSets {
+        main {
+            assets.srcDirs = ["C:/Users/javi_/.gradle/beauty-hogar-assets"]
+        }
+    }
+}
+
+preBuild.doFirst {
+    def targetDir = file("C:/Users/javi_/.gradle/beauty-hogar-assets")
+    targetDir.deleteDir()
+    targetDir.mkdirs()
+    ant.copy(todir: targetDir) {
+        fileset(dir: file("src/main/assets"))
+    }
 }
 
 repositories {

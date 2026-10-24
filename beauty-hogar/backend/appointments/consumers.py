@@ -32,8 +32,12 @@ class AppointmentConsumer(AsyncWebsocketConsumer):
         notification = event.get('notification', {})
         await self.send(text_data=json.dumps({
             'type': 'appointment_update',
+            'event_type': notification.get('event_type', 'appointment'),
             'appointment_id': notification.get('id', event.get('appointment_id')),
-            'title': notification.get('title', 'Actualización de Cita'),
+            'service_id': notification.get('service_id'),
+            'is_active': notification.get('is_active'),
+            'target_path': notification.get('target_path'),
+            'title': notification.get('title', 'Notificación en Tiempo Real'),
             'status': notification.get('status', event.get('status')),
             'message': notification.get('message', event.get('message')),
             'is_new': notification.get('is_new', False)

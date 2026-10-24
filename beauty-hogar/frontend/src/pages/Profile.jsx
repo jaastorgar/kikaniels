@@ -23,13 +23,14 @@ import { useAuth } from '../contexts/AuthContext'
 import api from '../api/axios'
 
 export default function Profile() {
-  const { user, isAdmin, updateProfile, logout } = useAuth()
+  const { user, isAdmin, isWorker, updateProfile, logout } = useAuth()
   const navigate = useNavigate()
 
   const [formData, setFormData] = useState({
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
-    phone: user?.phone || ''
+    phone: user?.phone || '',
+    bio: user?.bio || ''
   })
   const [savingProfile, setSavingProfile] = useState(false)
 
@@ -53,7 +54,8 @@ export default function Profile() {
       setFormData({
         first_name: user.first_name || '',
         last_name: user.last_name || '',
-        phone: user.phone || ''
+        phone: user.phone || '',
+        bio: user.bio || ''
       })
     }
   }, [user])
@@ -71,6 +73,16 @@ export default function Profile() {
             activeCount: statsRes.data?.pending_appointments || 0,
             servicesCount: Array.isArray(servicesRes.data) ? servicesRes.data.length : 0
           })
+        } else if (isWorker) {
+          const [statsRes, servicesRes] = await Promise.all([
+            api.get('appointments/worker/stats/'),
+            api.get('appointments/services/?mine=1')
+          ])
+          setSummary({
+            totalAppointments: statsRes.data?.total_appointments || 0,
+            activeCount: statsRes.data?.active_appointments || 0,
+            servicesCount: Array.isArray(servicesRes.data) ? servicesRes.data.length : 0
+          })
         } else {
           const res = await api.get('appointments/')
           const list = Array.isArray(res.data) ? res.data : []
@@ -85,7 +97,7 @@ export default function Profile() {
       }
     }
     loadSummary()
-  }, [isAdmin])
+  }, [isAdmin, isWorker])
 
   const handleProfileSave = async (e) => {
     e.preventDefault()
@@ -156,7 +168,11 @@ export default function Profile() {
           <div className="min-w-0 flex-1">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0AE8C6]/20 border border-[#0AE8C6]/40 text-[#0AE8C6] text-[10px] font-bold uppercase tracking-wider mb-1.5">
               <ShieldCheck size={12} />
-              {isAdmin ? 'Administrador / Profesional' : 'Cuenta Cliente'}
+              {isAdmin
+                ? 'Administrador / Profesional'
+                : isWorker
+                ? `${user?.specialty_display || 'Especialista'} (${Number(user?.commission_rate ?? 60)}% comisión)`
+                : 'Cuenta Cliente'}
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-white truncate font-tight">
               {user?.first_name} {user?.last_name}
@@ -170,15 +186,15 @@ export default function Profile() {
           <div className="bg-white/10 rounded-2xl p-3 text-center">
             <p className="text-xl font-bold text-[#0AE8C6] font-tight">{summary.totalAppointments}</p>
             <p className="text-[10px] text-purple-100 uppercase font-bold tracking-wider">
-              {isAdmin ? 'Citas Recibidas' : 'Total Reservas'}
+              {isAdmin ? 'Citas Recibidas' : isWorker ? 'Citas Asignadas' : 'Total Reservas'}
             </p>
           </div>
           <div className="bg-white/10 rounded-2xl p-3 text-center">
             <p className="text-xl font-bold text-white font-tight">
-              {isAdmin ? summary.servicesCount : summary.activeCount}
+              {isAdmin || isWorker ? summary.servicesCount : summary.activeCount}
             </p>
             <p className="text-[10px] text-purple-100 uppercase font-bold tracking-wider">
-              {isAdmin ? 'Mis Servicios' : 'Citas Activas'}
+              {isAdmin || isWorker ? 'Mis Servicios' : 'Citas Activas'}
             </p>
           </div>
         </div>
@@ -218,6 +234,54 @@ export default function Profile() {
                   <div>
                     <p className="text-sm font-bold text-[#2C0140]">Configurar Mis Horarios</p>
                     <p className="text-xs text-[#555555]">Abrir o bloquear turnos disponibles</p>
+                  </div>
+                </div>
+                <ChevronRight size={18} className="text-gray-400" />
+              </Link>
+            </>
+          ) : isWorker ? (
+            <>
+              <Link
+                to="/worker/services"
+                className="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-xl transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-[#F3E8FF] text-[#4A008B]">
+                    <Scissors size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-[#2C0140]">Mis Servicios y Precios</p>
+                    <p className="text-xs text-[#555555]">Publica tus servicios y define cuánto cobras</p>
+                  </div>
+                </div>
+                <ChevronRight size={18} className="text-gray-400" />
+              </Link>
+              <Link
+                to="/worker/timeslots"
+                className="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-xl transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-[#0AE8C6]/15 text-[#2C0140]">
+                    <Clock size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-[#2C0140]">Configurar Mis Horarios</p>
+                    <p className="text-xs text-[#555555]">Habilita tus bloques para recibir clientes</p>
+                  </div>
+                </div>
+                <ChevronRight size={18} className="text-gray-400" />
+              </Link>
+              <Link
+                to="/worker/appointments"
+                className="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-xl transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-[#F3E8FF] text-[#4A008B]">
+                    <Calendar size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-[#2C0140]">Mi Agenda y Comisiones</p>
+                    <p className="text-xs text-[#555555]">Atiende tus citas y revisa tus pagos</p>
                   </div>
                 </div>
                 <ChevronRight size={18} className="text-gray-400" />
@@ -309,6 +373,19 @@ export default function Profile() {
             />
           </div>
         </div>
+
+        {(isWorker || isAdmin) && (
+          <div>
+            <label className="block text-xs font-bold text-[#555555] mb-1">Presentación / Especialidad (Visible para clientes)</label>
+            <textarea
+              rows={2}
+              value={formData.bio}
+              onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-gray-50 border border-[#e6e6e6] rounded-xl text-sm focus:bg-white focus:border-[#4A008B] outline-none"
+              placeholder="Ej: Estilista profesional con 5 años de experiencia en corte, colorimetría y brushing a domicilio..."
+            />
+          </div>
+        )}
 
         <div>
           <label className="block text-xs font-bold text-[#555555] mb-1">Correo Electrónico (No editable)</label>

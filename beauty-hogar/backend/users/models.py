@@ -6,7 +6,19 @@ from .managers import UserManager
 class User(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = (
         ('client', 'Cliente'),
+        ('worker', 'Especialista'),
         ('admin', 'Administrador'),
+    )
+
+    SPECIALTY_CHOICES = (
+        ('peluquero', 'Peluquero / Estilista'),
+        ('barbero', 'Barbero'),
+        ('manicurista', 'Manicurista / Uñas'),
+        ('maquilladora', 'Maquillador(a)'),
+        ('cosmetologa', 'Cosmetóloga / Facial'),
+        ('masajista', 'Masajista / Spa'),
+        ('depilacion', 'Depilación'),
+        ('general', 'Especialista Integral'),
     )
     
     email = models.EmailField(unique=True)
@@ -15,6 +27,16 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone = models.CharField(max_length=15)
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='client')
     
+    # Campos profesionales para especialistas (trabajadores)
+    specialty = models.CharField(max_length=50, choices=SPECIALTY_CHOICES, blank=True, default='')
+    commission_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=60.00,
+        help_text="Porcentaje de comisión para el especialista por servicio completado (0-100)"
+    )
+    bio = models.TextField(blank=True, default='')
+
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
@@ -37,6 +59,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+
+    @property
+    def specialty_display(self):
+        return dict(self.SPECIALTY_CHOICES).get(self.specialty, self.specialty or 'Especialista')
     
     def save(self, *args, **kwargs):
         if self.is_superuser:

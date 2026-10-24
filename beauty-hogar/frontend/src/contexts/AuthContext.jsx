@@ -101,7 +101,8 @@ export function AuthProvider({ children }) {
     fetchProfile,
     updateProfile,
     loading,
-    isAdmin: user?.role === 'admin' || Boolean(user?.is_admin)
+    isAdmin: user?.role === 'admin' || Boolean(user?.is_admin),
+    isWorker: user?.role === 'worker'
   }
 
   return (

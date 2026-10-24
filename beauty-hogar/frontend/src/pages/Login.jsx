@@ -20,7 +20,8 @@ export default function Login() {
     
     if (result.success) {
       const isAdminUser = result.user?.role === 'admin' || Boolean(result.user?.is_admin)
-      navigate(isAdminUser ? '/admin' : '/')
+      const isWorkerUser = result.user?.role === 'worker'
+      navigate(isAdminUser ? '/admin' : isWorkerUser ? '/worker' : '/')
     } else {
       setError(result.error)
     }

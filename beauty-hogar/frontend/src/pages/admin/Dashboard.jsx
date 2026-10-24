@@ -84,6 +84,7 @@ export default function AdminDashboard() {
   }
 
   const quickNav = [
+    { label: 'Especialistas y Pagos', to: '/admin/specialists', icon: Users },
     { label: 'Citas', to: '/admin/appointments', icon: Calendar },
     { label: 'Horarios', to: '/admin/timeslots', icon: Clock },
     { label: 'Servicios', to: '/admin/services', icon: Scissors },
