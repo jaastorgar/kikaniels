@@ -16,7 +16,9 @@ import {
   PlusCircle,
   Sparkles,
   Award,
-  Wallet
+  Wallet,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -87,9 +89,12 @@ const Layout = ({ children, admin = false, worker = false }) => {
           : "/my-appointments";
         const destination = data.target_path || defaultTarget;
 
-        toast(data.message, {
+        const cleanMessage = (data.message || '').replace(/^[^\w¡¿$]+/u, '').trim();
+        toast(cleanMessage, {
           description: data.title || "Actualización en tiempo real",
-          icon: data.status === 'cancelled' ? '⏸️' : '✨',
+          icon: data.status === 'cancelled'
+            ? <AlertCircle className="w-4 h-4 text-amber-600" />
+            : <CheckCircle2 className="w-4 h-4 text-[#4A008B]" />,
           duration: 6000,
           action: {
             label: 'Ver',

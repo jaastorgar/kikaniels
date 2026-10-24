@@ -93,7 +93,7 @@ export default function Home() {
 
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white font-tight leading-tight">
-              ¡Hola, {user?.first_name || 'Bienvenida'}! 👋
+              ¡Hola, {user?.first_name || 'Bienvenida'}!
             </h1>
             <p className="text-xs sm:text-sm text-purple-100/90 mt-1">
               Agenda tu próximo tratamiento desde tu celular sin esperas.

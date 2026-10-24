@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Edit2, Trash2, X, Scissors, Loader2, Clock, User, CheckCircle2, EyeOff } from 'lucide-react'
+import { Plus, Edit2, Trash2, X, Scissors, Loader2, Clock, User, CheckCircle2, EyeOff, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '../../api/axios'
 
@@ -185,12 +185,13 @@ export default function AdminServices() {
                     <Scissors className="w-5 h-5 text-[#4A008B]" />
                   </div>
                   <span
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                       service.is_active
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : 'bg-amber-100 text-amber-800 border border-amber-300'
                     }`}
                   >
+                    {service.is_active ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
                     {service.is_active ? 'Habilitado' : 'Pendiente Habilitar'}
                   </span>
                 </div>
@@ -327,8 +328,11 @@ export default function AdminServices() {
                 />
               </div>
 
-              <div className="bg-[#F3E8FF]/50 border border-purple-200 rounded-2xl p-3 text-xs text-[#2C0140]">
-                💡 <strong>Nota:</strong> El especialista podrá personalizar en su propio panel el <strong>precio ($)</strong> y <strong>cuánto demora (min)</strong> este servicio.
+              <div className="bg-[#F3E8FF]/50 border border-purple-200 rounded-2xl p-3 text-xs text-[#2C0140] flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-[#4A008B] shrink-0 mt-0.5" />
+                <span>
+                  <strong>Nota:</strong> El especialista podrá personalizar en su propio panel el <strong>precio ($)</strong> y <strong>cuánto demora (min)</strong> este servicio.
+                </span>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

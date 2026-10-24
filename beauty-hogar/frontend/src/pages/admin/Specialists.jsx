@@ -15,20 +15,26 @@ import {
   Wallet,
   TrendingUp,
   Award,
-  MessageCircle
+  MessageCircle,
+  Gem,
+  Palette,
+  HeartHandshake,
+  Feather,
+  Crown,
+  Clock
 } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '../../api/axios'
 
 const SPECIALTY_OPTIONS = [
-  { value: 'peluquero', label: 'Peluquero / Estilista', emoji: '💇‍♀️' },
-  { value: 'barbero', label: 'Barbero', emoji: '💈' },
-  { value: 'manicurista', label: 'Manicurista / Uñas', emoji: '💅' },
-  { value: 'maquilladora', label: 'Maquillador(a)', emoji: '💄' },
-  { value: 'cosmetologa', label: 'Cosmetóloga / Facial', emoji: '✨' },
-  { value: 'masajista', label: 'Masajista / Spa', emoji: '💆‍♀️' },
-  { value: 'depilacion', label: 'Depilación', emoji: '🌸' },
-  { value: 'general', label: 'Especialista Integral', emoji: '⭐' },
+  { value: 'peluquero', label: 'Peluquero / Estilista', icon: Scissors },
+  { value: 'barbero', label: 'Barbero', icon: Award },
+  { value: 'manicurista', label: 'Manicurista / Uñas', icon: Gem },
+  { value: 'maquilladora', label: 'Maquillador(a)', icon: Palette },
+  { value: 'cosmetologa', label: 'Cosmetóloga / Facial', icon: Sparkles },
+  { value: 'masajista', label: 'Masajista / Spa', icon: HeartHandshake },
+  { value: 'depilacion', label: 'Depilación', icon: Feather },
+  { value: 'general', label: 'Especialista Integral', icon: Crown },
 ]
 
 const initialForm = {
@@ -186,7 +192,7 @@ export default function AdminSpecialists() {
   }
 
   const getSpecialtyMeta = (code) => {
-    return SPECIALTY_OPTIONS.find(s => s.value === code) || { label: 'Especialista', emoji: '✨' }
+    return SPECIALTY_OPTIONS.find(s => s.value === code) || { label: 'Especialista', icon: Sparkles }
   }
 
   const totals = workers.reduce(
@@ -315,6 +321,7 @@ export default function AdminSpecialists() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {workers.map((worker) => {
             const spec = getSpecialtyMeta(worker.specialty)
+            const SpecIcon = spec.icon || Scissors
             const wRate = Number(worker.commission_rate ?? 60)
             const bRate = Math.max(0, 100 - wRate)
             const pendingAmount = Number(worker.pending_payout || 0)
@@ -330,8 +337,8 @@ export default function AdminSpecialists() {
                   {/* Encabezado del Especialista */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#4A008B] to-[#2C0140] text-[#0AE8C6] flex items-center justify-center text-base font-bold shrink-0">
-                        {spec.emoji}
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#4A008B] to-[#2C0140] text-[#0AE8C6] flex items-center justify-center shrink-0 shadow-sm border border-white/10">
+                        <SpecIcon size={21} strokeWidth={1.75} />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -439,11 +446,12 @@ export default function AdminSpecialists() {
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="text-xs font-bold text-[#2C0140] truncate">{srv.name}</span>
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
                                 srv.is_active
                                   ? 'bg-emerald-100 text-emerald-800'
                                   : 'bg-amber-200/80 text-amber-900'
                               }`}>
+                                {srv.is_active ? <CheckCircle2 size={10} /> : <Clock size={10} />}
                                 {srv.is_active ? 'Habilitado' : 'Pendiente habilitar'}
                               </span>
                             </div>
@@ -558,18 +566,23 @@ export default function AdminSpecialists() {
                 <div className="grid grid-cols-2 gap-2">
                   {SPECIALTY_OPTIONS.map((opt) => {
                     const selected = formData.specialty === opt.value
+                    const OptIcon = opt.icon || Scissors
                     return (
                       <button
                         type="button"
                         key={opt.value}
                         onClick={() => setFormData({ ...formData, specialty: opt.value })}
-                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all text-xs font-bold ${
+                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2.5 transition-all text-xs font-bold ${
                           selected
                             ? 'border-[#4A008B] bg-[#F3E8FF] text-[#2C0140] shadow-xs'
                             : 'border-[#e6e6e6] bg-white text-[#555555]'
                         }`}
                       >
-                        <span className="text-base">{opt.emoji}</span>
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                          selected ? 'bg-[#4A008B] text-[#0AE8C6]' : 'bg-gray-100 text-[#4A008B]'
+                        }`}>
+                          <OptIcon size={15} strokeWidth={1.75} />
+                        </div>
                         <span className="truncate">{opt.label}</span>
                       </button>
                     )

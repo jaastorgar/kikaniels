@@ -139,7 +139,7 @@ class WorkerPayAllPendingView(APIView):
         pending_qs.update(payout_status='paid', paid_at=now)
 
         if last_apt:
-            msg = f"💸 ¡Pago liquidado! Se registró el pago de ${int(total_paid):,} por {count} servicio(s) completado(s)."
+            msg = f"Pago liquidado: Se registró el pago de ${int(total_paid):,} por {count} servicio(s) completado(s)."
             Notification.objects.create(user=worker, appointment=last_apt, message=msg)
             send_appointment_notification(worker.id, {
                 "id": last_apt.id,

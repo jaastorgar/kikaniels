@@ -533,12 +533,20 @@ export default function WorkerDashboard() {
                           {STATUS_LABELS[apt.status]}
                         </span>
                         {apt.status === 'completed' && (
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                             apt.payout_status === 'paid'
                               ? 'bg-emerald-100 text-emerald-800'
                               : 'bg-amber-100 text-amber-800'
                           }`}>
-                            {apt.payout_status === 'paid' ? '💸 Comisión Pagada' : '⏳ Pago Pendiente'}
+                            {apt.payout_status === 'paid' ? (
+                              <>
+                                <CheckCircle2 size={11} /> Comisión Pagada
+                              </>
+                            ) : (
+                              <>
+                                <Clock size={11} /> Pago Pendiente
+                              </>
+                            )}
                           </span>
                         )}
                       </div>
@@ -896,15 +904,16 @@ export default function WorkerDashboard() {
                         <div>
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <span
-                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                                 srv.is_active
                                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                   : 'bg-amber-100 text-amber-800 border border-amber-300'
                               }`}
                             >
+                              {srv.is_active ? <CheckCircle2 size={11} /> : <Clock size={11} />}
                               {srv.is_active
-                                ? '✅ Habilitado por Admin en Catálogo'
-                                : '⏳ Pendiente que el Admin lo habilite'}
+                                ? 'Habilitado por Admin en Catálogo'
+                                : 'Pendiente que el Admin lo habilite'}
                             </span>
                           </div>
                           <h3 className="text-base font-bold text-[#2C0140] leading-snug">{srv.name}</h3>

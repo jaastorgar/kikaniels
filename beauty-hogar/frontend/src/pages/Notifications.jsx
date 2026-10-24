@@ -8,7 +8,10 @@ import {
   Loader2, 
   CheckCircle2, 
   AlertCircle,
-  ArrowLeft
+  ArrowLeft,
+  Scissors,
+  Wallet,
+  ShieldCheck
 } from 'lucide-react'
 import { format, isValid, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -106,6 +109,42 @@ export default function Notifications() {
     }
   }
 
+  const cleanNotificationMessage = (msg = '') => {
+    return msg.replace(/^[^\w¡¿$]+/u, '').trim()
+  }
+
+  const getNotificationVisual = (msg = '', isRead = false) => {
+    const lower = msg.toLowerCase()
+    if (lower.includes('pago') || lower.includes('liquidado') || lower.includes('comisión')) {
+      return {
+        Icon: Wallet,
+        style: isRead ? 'bg-gray-100 text-gray-500' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+      }
+    }
+    if (lower.includes('habilitado') || lower.includes('confirmada') || lower.includes('completada')) {
+      return {
+        Icon: CheckCircle2,
+        style: isRead ? 'bg-gray-100 text-gray-500' : 'bg-[#0AE8C6]/15 text-[#068874] border border-[#0AE8C6]/40'
+      }
+    }
+    if (lower.includes('deshabilitado') || lower.includes('cancelada')) {
+      return {
+        Icon: AlertCircle,
+        style: isRead ? 'bg-gray-100 text-gray-500' : 'bg-amber-50 text-amber-700 border border-amber-200'
+      }
+    }
+    if (lower.includes('servicio') || lower.includes('precio') || lower.includes('duración')) {
+      return {
+        Icon: Scissors,
+        style: isRead ? 'bg-gray-100 text-gray-500' : 'bg-[#F3E8FF] text-[#4A008B] border border-purple-200'
+      }
+    }
+    return {
+      Icon: ShieldCheck,
+      style: isRead ? 'bg-gray-100 text-gray-500' : 'bg-[#F3E8FF] text-[#4A008B] border border-purple-200'
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[320px] gap-3 font-sans">
@@ -154,7 +193,10 @@ export default function Notifications() {
 
       {notifications.length > 0 ? (
         <div className="space-y-3">
-          {notifications.map((n) => (
+          {notifications.map((n) => {
+            const visual = getNotificationVisual(n.message, n.is_read)
+            const NotifIcon = visual.Icon
+            return (
             <div 
               key={n.id} 
               className={`p-4 rounded-2xl border transition-all flex items-start gap-3.5 ${
@@ -163,12 +205,10 @@ export default function Notifications() {
                   : 'bg-white border-[#4A008B]/25 shadow-sm'
               }`}
             >
-              {/* Icono lateral con punto indicador integrado sin tapar el texto */}
+              {/* Icono vectorial profesional con punto indicador integrado */}
               <div className="relative shrink-0">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                  n.is_read ? 'bg-gray-100 text-gray-400' : 'bg-[#F3E8FF] text-[#4A008B]'
-                }`}>
-                  {n.is_read ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${visual.style}`}>
+                  <NotifIcon size={19} strokeWidth={1.75} />
                 </div>
                 {!n.is_read && (
                   <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#0AE8C6] border-2 border-white rounded-full shadow-xs" />
@@ -180,7 +220,7 @@ export default function Notifications() {
                 <p className={`text-sm leading-snug break-words ${
                   n.is_read ? 'text-[#555555]' : 'text-[#2C0140] font-bold'
                 }`}>
-                  {n.message}
+                  {cleanNotificationMessage(n.message)}
                 </p>
                 
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-[#555555]">
@@ -215,7 +255,8 @@ export default function Notifications() {
                 </button>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       ) : (
         <div className="bg-white border border-dashed border-[#dcdcdc] rounded-2xl py-14 px-4 text-center">

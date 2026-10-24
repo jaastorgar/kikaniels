@@ -107,14 +107,14 @@ class ServiceViewSet(viewsets.ModelViewSet):
         price_fmt = f"${int(service.price):,}".replace(",", ".")
         if service.is_active:
             msg = (
-                f"✅ ¡Tu servicio '{service.name}' fue HABILITADO por el Administrador! "
+                f"¡Tu servicio '{service.name}' fue HABILITADO por el Administrador! "
                 f"Ya aparece en el catálogo de clientes ({price_fmt} • {service.duration} min)."
             )
             ws_status = "confirmed"
             title = "Servicio Habilitado"
         else:
             msg = (
-                f"⏸️ Tu servicio '{service.name}' fue DESHABILITADO del catálogo de clientes por el Administrador."
+                f"Tu servicio '{service.name}' fue DESHABILITADO del catálogo de clientes por el Administrador."
             )
             ws_status = "cancelled"
             title = "Servicio Deshabilitado"
@@ -139,7 +139,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
         # También notificar por WebSocket a los clientes activos cuando se habilita un nuevo servicio de especialista
         if service.is_active:
             client_msg = (
-                f"✨ Nuevo servicio disponible: '{service.name}' con {provider.full_name} "
+                f"Nuevo servicio disponible: '{service.name}' con {provider.full_name} "
                 f"({provider.specialty_display}) por {price_fmt}."
             )
             for client in User.objects.filter(role='client', is_active=True):
@@ -187,7 +187,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
             )
             price_fmt = f"${int(updated.price):,}".replace(",", ".")
             admin_msg = (
-                f"✂️ {user.full_name} ({user.specialty_display}) actualizó su servicio '{updated.name}': "
+                f"{user.full_name} ({user.specialty_display}) actualizó su servicio '{updated.name}': "
                 f"Precio {price_fmt} y duración {updated.duration} min."
             )
             for adm in User.objects.filter(Q(role='admin') | Q(is_admin=True), is_active=True):
