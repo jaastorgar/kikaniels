@@ -13,7 +13,8 @@ import {
   Home,
   Download,
   X,
-  PlusCircle
+  PlusCircle,
+  Sparkles
 } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -103,7 +104,7 @@ const Layout = ({ children, admin = false }) => {
 
   const profilePath = admin ? '/admin/profile' : '/profile';
 
-  // Menú completo para Sidebar lateral
+  // Menú lateral: en móvil solo se usa para Administrador (en PC se muestra para ambos)
   const sidebarItems = admin ? [
     { name: 'Panel Principal', path: '/admin', icon: LayoutDashboard },
     { name: 'Citas', path: '/admin/appointments', icon: Calendar },
@@ -111,6 +112,7 @@ const Layout = ({ children, admin = false }) => {
     { name: 'Horarios', path: '/admin/timeslots', icon: Clock },
     { name: 'Clientes', path: '/admin/clients', icon: Users },
     { name: 'Mi Perfil', path: '/admin/profile', icon: User },
+    { name: 'Vista Cliente', path: '/', icon: Sparkles },
   ] : [
     { name: 'Inicio', path: '/', icon: Home },
     { name: 'Servicios', path: '/services', icon: Scissors },
@@ -119,14 +121,8 @@ const Layout = ({ children, admin = false }) => {
     { name: 'Mi Perfil', path: '/profile', icon: User },
   ];
 
-  // 5 Pestañas principales para la Barra Inferior Nativa en Móviles
-  const bottomTabs = admin ? [
-    { name: 'Panel', path: '/admin', icon: LayoutDashboard },
-    { name: 'Citas', path: '/admin/appointments', icon: Calendar },
-    { name: 'Servicios', path: '/admin/services', icon: Scissors },
-    { name: 'Horarios', path: '/admin/timeslots', icon: Clock },
-    { name: 'Perfil', path: '/admin/profile', icon: User },
-  ] : [
+  // Barra inferior exclusiva para Cliente en móvil
+  const clientBottomTabs = [
     { name: 'Inicio', path: '/', icon: Home },
     { name: 'Servicios', path: '/services', icon: Scissors },
     { name: 'Reservar', path: '/book', icon: PlusCircle, highlight: true },
@@ -140,31 +136,33 @@ const Layout = ({ children, admin = false }) => {
     <div className="min-h-screen bg-[#F8F9FA] flex font-sans text-[#343A40] select-none sm:select-auto">
       <Toaster position="top-center" richColors closeButton />
 
-      {/* Backdrop móvil para cerrar menú lateral */}
-      {isSidebarOpen && (
+      {/* Backdrop móvil solo para el menú lateral del Administrador */}
+      {admin && isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
           className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 lg:hidden"
         />
       )}
       
-      {/* Sidebar Lateral (Escritorio + Drawer Móvil) */}
+      {/* Sidebar Lateral: En móvil solo existe para Admin; en escritorio (lg:) para ambos */}
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-[#2C0140] text-white shadow-2xl transform transition-transform duration-300 ease-in-out
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:relative lg:translate-x-0
+        ${admin ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'hidden'}
+        lg:block lg:relative lg:translate-x-0
       `}>
         <div className="h-full flex flex-col">
           <div className="p-6 flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-[#0AE8C6]">Beauty Hogar</h1>
               <p className="text-[10px] font-bold text-purple-200 uppercase tracking-widest opacity-70">
-                {admin ? 'Modo Profesional' : 'App Clientes'}
+                {admin ? 'Modo Administrador' : 'App Clientes'}
               </p>
             </div>
-            <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-1.5 text-purple-200 hover:text-white">
-              <X size={20} />
-            </button>
+            {admin && (
+              <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-1.5 text-purple-200 hover:text-white">
+                <X size={20} />
+              </button>
+            )}
           </div>
 
           <nav className="flex-1 px-3 space-y-1.5">
@@ -211,26 +209,29 @@ const Layout = ({ children, admin = false }) => {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden pb-20 lg:pb-0">
+      <div className={`flex-1 flex flex-col min-w-0 overflow-hidden ${!admin ? 'pb-20 lg:pb-0' : ''}`}>
         {/* Top App Bar Estilo Nativo */}
         <header className="bg-white/95 backdrop-blur-md border-b border-[#ececec] h-14 sm:h-16 flex items-center justify-between px-4 lg:px-8 shrink-0 sticky top-0 z-30">
           <div className="flex items-center gap-2.5">
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 -ml-1 text-[#2C0140] rounded-xl active:bg-gray-100"
-              aria-label="Abrir menú"
-            >
-              <Menu size={22} />
-            </button>
-            <Link to={admin ? "/admin" : "/"} className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-[#2C0140] flex items-center justify-center lg:hidden">
+            {/* El botón de menú lateral (☰) en móvil solo se muestra para Administrador */}
+            {admin && (
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="lg:hidden p-2 -ml-1 text-[#2C0140] rounded-xl active:bg-gray-100"
+                aria-label="Abrir menú de administrador"
+              >
+                <Menu size={22} />
+              </button>
+            )}
+            <Link to={admin ? "/admin" : "/"} className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#2C0140] flex items-center justify-center lg:hidden shadow-xs">
                 <Scissors size={15} className="text-[#0AE8C6]" />
               </div>
               <div>
                 <span className="font-bold text-base sm:text-lg text-[#2C0140] font-tight leading-none block">
                   Beauty Hogar
                 </span>
-                <span className="text-[9px] font-bold text-[#4A008B] uppercase tracking-widest block lg:hidden">
+                <span className="text-[9px] font-bold text-[#4A008B] uppercase tracking-widest block lg:hidden mt-0.5">
                   {admin ? 'Panel Admin' : 'Belleza en Casa'}
                 </span>
               </div>
@@ -287,47 +288,49 @@ const Layout = ({ children, admin = false }) => {
           </div>
         </main>
 
-        {/* Barra de Navegación Inferior Nativa para Móviles */}
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-[#e6e6e6] z-30 flex items-center justify-around py-1.5 px-2 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-          {bottomTabs.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
+        {/* Barra de Navegación Inferior Nativa (Solo para Clientes en Móvil) */}
+        {!admin && (
+          <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-[#e6e6e6] z-30 flex items-center justify-around py-1.5 px-2 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+            {clientBottomTabs.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
 
-            if (item.highlight) {
+              if (item.highlight) {
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.path}
+                    className="flex flex-col items-center justify-center -mt-4"
+                  >
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform active:scale-95 ${
+                      isActive
+                        ? 'bg-[#0AE8C6] text-[#2C0140]'
+                        : 'bg-[#4A008B] text-white'
+                    }`}>
+                      <Icon size={22} />
+                    </div>
+                    <span className={`text-[10px] mt-1 font-bold ${isActive ? 'text-[#4A008B]' : 'text-[#555555]'}`}>
+                      {item.name}
+                    </span>
+                  </Link>
+                );
+              }
+
               return (
                 <Link
                   key={item.name}
                   to={item.path}
-                  className="flex flex-col items-center justify-center -mt-4"
+                  className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
+                    isActive ? 'text-[#4A008B] font-bold' : 'text-[#555555]'
+                  }`}
                 >
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform active:scale-95 ${
-                    isActive
-                      ? 'bg-[#0AE8C6] text-[#2C0140]'
-                      : 'bg-[#4A008B] text-white'
-                  }`}>
-                    <Icon size={22} />
-                  </div>
-                  <span className={`text-[10px] mt-1 font-bold ${isActive ? 'text-[#4A008B]' : 'text-[#555555]'}`}>
-                    {item.name}
-                  </span>
+                  <Icon size={20} className={isActive ? 'text-[#4A008B]' : 'text-gray-400'} />
+                  <span className="text-[10px] mt-0.5">{item.name}</span>
                 </Link>
               );
-            }
-
-            return (
-              <Link
-                key={item.name}
-                to={item.path}
-                className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
-                  isActive ? 'text-[#4A008B] font-bold' : 'text-[#555555]'
-                }`}
-              >
-                <Icon size={20} className={isActive ? 'text-[#4A008B]' : 'text-gray-400'} />
-                <span className="text-[10px] mt-0.5">{item.name}</span>
-              </Link>
-            );
-          })}
-        </nav>
+            })}
+          </nav>
+        )}
       </div>
     </div>
   );

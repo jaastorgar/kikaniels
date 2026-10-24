@@ -13,7 +13,7 @@ import {
   User,
   ExternalLink
 } from 'lucide-react'
-import { format, parseISO } from 'date-fns'
+import { format, isValid, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
@@ -27,7 +27,6 @@ export default function AdminNotifications() {
   useEffect(() => {
     fetchNotifications()
 
-    // CONEXIÓN EN TIEMPO REAL (WebSocket con token JWT)
     const token = localStorage.getItem('token')
     if (!token) return
 
@@ -48,7 +47,6 @@ export default function AdminNotifications() {
       const response = await api.get('appointments/notifications/')
       setNotifications(Array.isArray(response.data) ? response.data : [])
     } catch (error) {
-      console.error('Error al cargar notificaciones:', error)
       toast.error('No se pudo actualizar la bandeja de entrada')
     } finally {
       setLoading(false)
@@ -57,7 +55,6 @@ export default function AdminNotifications() {
 
   const markAsRead = async (id) => {
     try {
-      // SOLUCIÓN AL 404: Ahora apunta a /read/ para coincidir con el backend
       await api.post(`appointments/notifications/${id}/read/`)
       setNotifications(notifications.map(n => 
         n.id === id ? { ...n, is_read: true } : n
@@ -72,7 +69,6 @@ export default function AdminNotifications() {
     if (unread.length === 0) return
 
     try {
-      // Sincronizado masivamente con el endpoint /read/
       await Promise.all(unread.map(n => api.post(`appointments/notifications/${n.id}/read/`)))
       setNotifications(notifications.map(n => ({ ...n, is_read: true })))
       toast.success('Bandeja marcada como leída')
@@ -91,54 +87,81 @@ export default function AdminNotifications() {
     }
   }
 
+  const formatDateSafe = (dateStr) => {
+    if (!dateStr) return ''
+    try {
+      const date = parseISO(dateStr)
+      if (!isValid(date)) return ''
+      return format(date, "d 'de' MMM", { locale: es })
+    } catch (e) {
+      return ''
+    }
+  }
+
+  const formatTimeSafe = (dateStr) => {
+    if (!dateStr) return ''
+    try {
+      const date = parseISO(dateStr)
+      if (!isValid(date)) return ''
+      return `${format(date, "HH:mm")} hrs`
+    } catch (e) {
+      return ''
+    }
+  }
+
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <Loader2 className="w-12 h-12 text-[#4A008B] animate-spin" />
-        <p className="text-[#555555] font-medium font-sans animate-pulse text-sm uppercase tracking-widest">
-          Sincronizando agenda de Beauty Hogar...
+      <div className="flex flex-col items-center justify-center min-h-[320px] gap-3">
+        <Loader2 className="w-9 h-9 text-[#4A008B] animate-spin" />
+        <p className="text-[#555555] font-medium text-xs uppercase tracking-widest">
+          Sincronizando agenda...
         </p>
       </div>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 font-sans pb-20 pt-4 px-4">
+    <div className="max-w-3xl mx-auto space-y-4 font-sans pb-6">
       {/* Encabezado con Acciones Globales */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
           <button 
             onClick={() => navigate('/admin')} 
-            className="p-3 bg-white border border-[#e6e6e6] hover:bg-[#F3E8FF] rounded-2xl transition-all shadow-sm group"
+            className="w-10 h-10 bg-white border border-[#e6e6e6] active:scale-95 rounded-xl flex items-center justify-center shadow-xs text-[#2C0140]"
+            aria-label="Volver"
           >
-            <ArrowLeft className="w-5 h-5 text-[#4A008B] group-hover:-translate-x-1 transition-transform" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-3xl font-bold text-[#2C0140] font-tight tracking-tight leading-none">Notificaciones de Negocio</h1>
-            <p className="text-[#555555] text-sm mt-1 font-medium">Historial de reservas para tu centro</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2C0140] font-tight leading-tight">
+              Avisos del Negocio
+            </h1>
+            <p className="text-[#555555] text-xs">
+              Actividad de reservas en tiempo real
+            </p>
           </div>
         </div>
 
         {notifications.some(n => !n.is_read) && (
           <button 
             onClick={markAllAsRead}
-            className="text-[#4A008B] font-bold text-[10px] uppercase tracking-widest bg-[#F3E8FF] px-6 py-4 rounded-2xl hover:bg-[#E0B3FF] transition-all flex items-center gap-2 border border-[#4A008B]/10 active:scale-95 shadow-lg shadow-purple-900/5"
+            className="px-3 py-2 bg-[#F3E8FF] text-[#4A008B] rounded-xl text-[11px] font-bold flex items-center gap-1.5 active:scale-95 transition-transform shrink-0"
           >
-            <CheckCircle2 size={16} />
-            Marcar todo como leído
+            <CheckCircle2 size={14} />
+            <span>Leer todo</span>
           </button>
         )}
       </div>
 
       {/* Listado Dinámico */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {notifications.length === 0 ? (
-          <div className="bg-white border-2 border-dashed border-[#e6e6e6] rounded-[3rem] py-24 text-center">
-            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Bell className="w-10 h-10 text-gray-200" />
+          <div className="bg-white border border-dashed border-[#dcdcdc] rounded-2xl py-14 px-4 text-center">
+            <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <Bell className="w-7 h-7 text-gray-300" />
             </div>
-            <h3 className="text-xl font-bold text-[#2C0140] font-tight">Sin actividad reciente</h3>
-            <p className="text-[#555555] text-sm max-w-xs mx-auto mt-2">
+            <h3 className="text-base font-bold text-[#2C0140]">Sin actividad reciente</h3>
+            <p className="text-[#555555] text-xs max-w-xs mx-auto mt-1">
               Las nuevas citas aparecerán aquí automáticamente en tiempo real.
             </p>
           </div>
@@ -146,78 +169,80 @@ export default function AdminNotifications() {
           notifications.map((n) => (
             <div 
               key={n.id} 
-              className={`group relative bg-white p-7 rounded-[2.5rem] border-2 transition-all duration-300 flex items-start gap-6 ${
+              className={`bg-white p-4 rounded-2xl border transition-all flex items-start gap-3.5 ${
                 n.is_read 
-                  ? 'border-[#e6e6e6] opacity-60 grayscale-[0.5]' 
-                  : 'border-[#4A008B]/20 shadow-xl shadow-purple-900/5 ring-1 ring-[#4A008B]/5'
+                  ? 'border-[#ececec] opacity-75' 
+                  : 'border-[#4A008B]/25 shadow-sm'
               }`}
             >
-              {!n.is_read && (
-                <div className="absolute top-10 right-10 w-2.5 h-2.5 bg-[#0AE8C6] rounded-full shadow-[0_0_15px_rgba(10,232,198,0.7)]" />
-              )}
-
-              <div className={`p-4 rounded-2xl flex-shrink-0 transition-all ${
-                n.is_read ? 'bg-gray-100 text-gray-400' : 'bg-[#F3E8FF] text-[#4A008B] scale-105'
-              }`}>
-                {n.is_read ? <Check size={24} /> : <AlertCircle size={24} className="animate-pulse" />}
+              <div className="relative shrink-0">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  n.is_read ? 'bg-gray-100 text-gray-400' : 'bg-[#F3E8FF] text-[#4A008B]'
+                }`}>
+                  {n.is_read ? <Check size={20} /> : <AlertCircle size={20} />}
+                </div>
+                {!n.is_read && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#0AE8C6] border-2 border-white rounded-full shadow-xs" />
+                )}
               </div>
 
-              <div className="flex-1 space-y-5">
-                <div className="space-y-2">
-                  <p className={`text-lg leading-tight ${n.is_read ? 'text-[#555555]' : 'text-[#2C0140] font-bold font-tight'}`}>
-                    {n.message}
-                  </p>
-                  <div className="flex items-center gap-4 text-[9px] font-bold text-[#555555] uppercase tracking-[0.2em]">
-                    <span className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100">
-                      <Calendar size={12} className="text-[#0AE8C6]" /> 
-                      {format(parseISO(n.created_at), "d 'de' MMMM", { locale: es })}
-                    </span>
-                    <span className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100">
-                      <Clock size={12} className="text-[#0AE8C6]" /> 
-                      {format(parseISO(n.created_at), "HH:mm")} hrs
-                    </span>
-                  </div>
+              <div className="flex-1 min-w-0 space-y-2.5">
+                <p className={`text-sm leading-snug break-words ${
+                  n.is_read ? 'text-[#555555]' : 'text-[#2C0140] font-bold'
+                }`}>
+                  {n.message}
+                </p>
+
+                <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-[#555555]">
+                  <span className="inline-flex items-center gap-1 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
+                    <Calendar size={12} className="text-[#4A008B]" /> 
+                    {formatDateSafe(n.created_at)}
+                  </span>
+                  <span className="inline-flex items-center gap-1 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
+                    <Clock size={12} className="text-[#4A008B]" /> 
+                    {formatTimeSafe(n.created_at)}
+                  </span>
                 </div>
 
                 {/* Tarjeta de Cita Vinculada */}
                 {n.appointment_details && (
-                  <div className="bg-[#F3E8FF]/30 rounded-3xl p-5 border border-purple-100/50 flex flex-wrap gap-5 items-center justify-between">
-                    <div className="flex items-center gap-6">
-                       <div className="flex items-center gap-3">
-                          <div className="p-2 bg-white rounded-lg"><Scissors size={14} className="text-[#4A008B]" /></div>
-                          <span className="text-xs font-bold text-[#2C0140] font-tight">{n.appointment_details.service_details?.name}</span>
-                       </div>
-                       <div className="flex items-center gap-3">
-                          <div className="p-2 bg-white rounded-lg"><User size={14} className="text-[#4A008B]" /></div>
-                          <span className="text-xs font-bold text-[#555555]">{n.appointment_details.client_details?.first_name}</span>
-                       </div>
+                  <div className="bg-[#F3E8FF]/40 rounded-xl p-2.5 border border-purple-100 flex flex-wrap gap-2 items-center justify-between">
+                    <div className="flex flex-wrap items-center gap-3 text-xs">
+                      <span className="inline-flex items-center gap-1.5 font-bold text-[#2C0140]">
+                        <Scissors size={13} className="text-[#4A008B]" />
+                        {n.appointment_details.service_details?.name}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 font-medium text-[#555555]">
+                        <User size={13} className="text-[#4A008B]" />
+                        {n.appointment_details.client_details?.first_name}
+                      </span>
                     </div>
                     <button 
                       onClick={() => navigate('/admin/appointments')}
-                      className="text-[10px] font-bold text-[#4A008B] hover:text-[#0AE8C6] flex items-center gap-2 uppercase tracking-widest transition-colors"
+                      className="text-[11px] font-bold text-[#4A008B] flex items-center gap-1"
                     >
-                      Gestionar Agenda <ExternalLink size={12} />
+                      Ver cita <ExternalLink size={12} />
                     </button>
                   </div>
                 )}
               </div>
 
-              <div className="flex flex-col gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all">
+              <div className="flex items-center gap-1 shrink-0">
                 {!n.is_read && (
                   <button 
                     onClick={() => markAsRead(n.id)}
-                    className="p-3 text-[#4A008B] hover:bg-[#F3E8FF] rounded-2xl transition-all border border-transparent hover:border-[#4A008B]/10"
+                    className="p-2 text-[#4A008B] bg-[#F3E8FF]/60 hover:bg-[#F3E8FF] rounded-xl transition-colors"
                     title="Marcar como leída"
                   >
-                    <CheckCircle2 size={20} />
+                    <CheckCircle2 size={16} />
                   </button>
                 )}
                 <button 
                   onClick={() => deleteNotification(n.id)}
-                  className="p-3 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-2xl transition-all border border-transparent hover:border-red-100"
+                  className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
                   title="Eliminar registro"
                 >
-                  <Trash2 size={20} />
+                  <Trash2 size={16} />
                 </button>
               </div>
             </div>

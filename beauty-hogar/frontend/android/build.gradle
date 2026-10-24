@@ -22,6 +22,8 @@ allprojects {
         google()
         mavenCentral()
     }
+    // Evita que OneDrive bloquee las carpetas temporales de compilación en Windows
+    buildDir = "C:/Users/javi_/.gradle/beauty-hogar-build/${project.name}"
 }
 
 task clean(type: Delete) {

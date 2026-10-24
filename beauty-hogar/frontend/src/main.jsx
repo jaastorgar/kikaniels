@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { Capacitor } from '@capacitor/core'
-import { StatusBar, Style } from '@capacitor/status-bar'
+import { StatusBar } from '@capacitor/status-bar'
 import { SplashScreen } from '@capacitor/splash-screen'
 import { App as CapApp } from '@capacitor/app'
 import App from './App.jsx'
@@ -10,8 +10,19 @@ import { AuthProvider } from './contexts/AuthContext'
 
 // Inicialización para entorno Móvil Nativo (Capacitor Android / iOS)
 if (Capacitor.isNativePlatform()) {
-  StatusBar.setBackgroundColor({ color: '#2C0140' }).catch(() => {})
-  StatusBar.setStyle({ style: Style.Dark }).catch(() => {})
+  // Limpiar cualquier Service Worker o caché antigua del WebView
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((r) => r.unregister())
+    }).catch(() => {})
+  }
+  if ('caches' in window) {
+    caches.keys().then((keys) => {
+      keys.forEach((k) => caches.delete(k))
+    }).catch(() => {})
+  }
+
+  StatusBar.hide().catch(() => {})
   SplashScreen.hide().catch(() => {})
 
   CapApp.addListener('backButton', ({ canGoBack }) => {
