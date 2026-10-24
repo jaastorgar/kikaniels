@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Edit2, Trash2, X, Scissors, Loader2, Clock, User, CheckCircle2, EyeOff, Sparkles } from 'lucide-react'
+import { Plus, Edit2, Trash2, X, Scissors, Loader2, Clock, User, CheckCircle2, EyeOff, Sparkles, DollarSign, Percent } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '../../api/axios'
 
@@ -17,6 +17,9 @@ export default function AdminServices() {
     price: '15000',
     duration: '60',
     provider_id: '',
+    payout_type: 'percentage',
+    worker_commission_rate: '60',
+    worker_fixed_pay: '9000',
     is_active: true
   })
 
@@ -78,6 +81,9 @@ export default function AdminServices() {
       description: formData.description,
       price: priceValue,
       duration: durationValue,
+      payout_type: formData.payout_type || 'percentage',
+      worker_commission_rate: parseFloat(formData.worker_commission_rate || 60),
+      worker_fixed_pay: parseFloat(formData.worker_fixed_pay || 0),
       is_active: formData.is_active
     }
     if (formData.provider_id) {
@@ -91,7 +97,7 @@ export default function AdminServices() {
     try {
       if (editingService) {
         await api.put(path, payload)
-        toast.success('Servicio actualizado')
+        toast.success('Servicio y pago actualizados')
       } else {
         await api.post(path, payload)
         toast.success('Servicio habilitado exitosamente')
@@ -99,7 +105,17 @@ export default function AdminServices() {
 
       setShowModal(false)
       setEditingService(null)
-      setFormData({ name: '', description: '', price: '15000', duration: '60', provider_id: '', is_active: true })
+      setFormData({
+        name: '',
+        description: '',
+        price: '15000',
+        duration: '60',
+        provider_id: '',
+        payout_type: 'percentage',
+        worker_commission_rate: '60',
+        worker_fixed_pay: '9000',
+        is_active: true
+      })
       fetchServices()
     } catch (error) {
       const serverErrors = error.response?.data
@@ -133,6 +149,9 @@ export default function AdminServices() {
       price: service.price,
       duration: service.duration,
       provider_id: service.provider || '',
+      payout_type: service.payout_type || 'percentage',
+      worker_commission_rate: String(service.worker_commission_rate ?? 60),
+      worker_fixed_pay: String(service.worker_fixed_pay ?? 0),
       is_active: service.is_active
     })
     setShowModal(true)
@@ -239,6 +258,20 @@ export default function AdminServices() {
                   </span>
                 </div>
               </div>
+
+              {service.provider && (
+                <div className="flex items-center justify-between text-[11px] font-bold bg-[#F8F9FA] px-3 py-2 rounded-xl border border-gray-100">
+                  <span className="text-[#4A008B] inline-flex items-center gap-1">
+                    {service.payout_type === 'fixed' ? <DollarSign className="w-3.5 h-3.5" /> : <Percent className="w-3.5 h-3.5" />}
+                    {service.payout_type === 'fixed'
+                      ? `Pago Fijo: $${Number(service.calculated_worker_pay || 0).toLocaleString('es-CL')}`
+                      : `Pago (${Number(service.worker_commission_rate || 60)}%): $${Number(service.calculated_worker_pay || 0).toLocaleString('es-CL')}`}
+                  </span>
+                  <span className="text-emerald-700">
+                    Negocio: ${Number(service.calculated_business_profit || 0).toLocaleString('es-CL')}
+                  </span>
+                </div>
+              )}
 
               <button
                 type="button"
@@ -360,6 +393,71 @@ export default function AdminServices() {
                     required
                   />
                 </div>
+              </div>
+
+              {/* Configuración de Pago al Especialista por este Servicio */}
+              <div className="bg-[#F8F9FA] border border-[#e6e6e6] rounded-2xl p-3.5 space-y-3">
+                <label className="block text-[10px] font-bold text-[#2C0140] uppercase tracking-widest">
+                  Pago al Especialista por este Servicio
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, payout_type: 'fixed' })}
+                    className={`p-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 ${
+                      formData.payout_type === 'fixed'
+                        ? 'border-[#4A008B] bg-[#F3E8FF] text-[#2C0140]'
+                        : 'border-gray-200 bg-white text-[#555555]'
+                    }`}
+                  >
+                    <DollarSign className="w-3.5 h-3.5 text-[#4A008B]" />
+                    Monto Fijo ($)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, payout_type: 'percentage' })}
+                    className={`p-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 ${
+                      formData.payout_type !== 'fixed'
+                        ? 'border-[#4A008B] bg-[#F3E8FF] text-[#2C0140]'
+                        : 'border-gray-200 bg-white text-[#555555]'
+                    }`}
+                  >
+                    <Percent className="w-3.5 h-3.5 text-[#4A008B]" />
+                    Porcentaje (%)
+                  </button>
+                </div>
+
+                {formData.payout_type === 'fixed' ? (
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#555555] uppercase mb-1">
+                      Monto Fijo a Pagar al Especialista ($)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.worker_fixed_pay}
+                      onChange={(e) => setFormData({ ...formData, worker_fixed_pay: e.target.value })}
+                      className="w-full px-3.5 py-2 border border-[#e6e6e6] rounded-xl outline-none text-sm bg-white font-bold"
+                      placeholder="Ej: 10000"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex items-center justify-between text-xs font-bold mb-1">
+                      <span className="text-[#555555]">Porcentaje para el Especialista:</span>
+                      <span className="text-[#4A008B]">{formData.worker_commission_rate}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="10"
+                      max="90"
+                      step="5"
+                      value={formData.worker_commission_rate}
+                      onChange={(e) => setFormData({ ...formData, worker_commission_rate: e.target.value })}
+                      className="w-full accent-[#4A008B]"
+                    />
+                  </div>
+                )}
               </div>
 
               <label className="flex items-center gap-2.5 text-xs font-bold text-[#2C0140] cursor-pointer pt-1">

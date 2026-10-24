@@ -58,6 +58,14 @@ export default function AdminSpecialists() {
   const [showModal, setShowModal] = useState(false)
   const [editingWorker, setEditingWorker] = useState(null)
   const [formData, setFormData] = useState(initialForm)
+  const [payoutModalService, setPayoutModalService] = useState(null)
+  const [savingPayout, setSavingPayout] = useState(false)
+  const [payoutForm, setPayoutForm] = useState({
+    payout_type: 'fixed',
+    worker_fixed_pay: '10000',
+    worker_commission_rate: '60',
+    is_active: true
+  })
 
   useEffect(() => {
     fetchWorkers()
@@ -188,6 +196,60 @@ export default function AdminSpecialists() {
       toast.error('No se pudo cambiar el estado del servicio')
     } finally {
       setTogglingServiceId(null)
+    }
+  }
+
+  const openPayoutModal = (service, worker) => {
+    const srvPrice = Number(service.price || 15000)
+    const defaultFixed = Number(service.worker_fixed_pay || 0) > 0
+      ? Number(service.worker_fixed_pay)
+      : Math.round((srvPrice * Number(service.worker_commission_rate || worker.commission_rate || 60)) / 100)
+
+    setPayoutModalService({ ...service, workerName: `${worker.first_name} ${worker.last_name}`.trim() })
+    setPayoutForm({
+      payout_type: service.payout_type || 'percentage',
+      worker_fixed_pay: String(defaultFixed),
+      worker_commission_rate: String(Number(service.worker_commission_rate ?? worker.commission_rate ?? 60)),
+      is_active: true
+    })
+  }
+
+  const handleSaveServicePayout = async (e) => {
+    e.preventDefault()
+    if (!payoutModalService) return
+
+    const srvPrice = Number(payoutModalService.price || 0)
+    const fixedVal = parseFloat(payoutForm.worker_fixed_pay || 0)
+    const rateVal = parseFloat(payoutForm.worker_commission_rate || 60)
+
+    if (payoutForm.payout_type === 'fixed' && (isNaN(fixedVal) || fixedVal < 0 || fixedVal > srvPrice)) {
+      toast.error(`El monto fijo debe estar entre $0 y $${srvPrice.toLocaleString('es-CL')}`)
+      return
+    }
+    if (payoutForm.payout_type === 'percentage' && (isNaN(rateVal) || rateVal < 0 || rateVal > 100)) {
+      toast.error('El porcentaje debe estar entre 0% y 100%')
+      return
+    }
+
+    setSavingPayout(true)
+    try {
+      await api.patch(`appointments/services/${payoutModalService.id}/`, {
+        payout_type: payoutForm.payout_type,
+        worker_fixed_pay: payoutForm.payout_type === 'fixed' ? fixedVal : 0,
+        worker_commission_rate: payoutForm.payout_type === 'percentage' ? rateVal : Number(payoutModalService.worker_commission_rate || 60),
+        is_active: payoutForm.is_active
+      })
+      toast.success(
+        payoutForm.is_active
+          ? `Pago configurado y servicio "${payoutModalService.name}" habilitado (notificado al especialista)`
+          : `Pago del servicio "${payoutModalService.name}" actualizado`
+      )
+      setPayoutModalService(null)
+      fetchWorkers()
+    } catch (error) {
+      toast.error('No se pudo guardar el pago del servicio')
+    } finally {
+      setSavingPayout(false)
     }
   }
 
@@ -428,56 +490,87 @@ export default function AdminSpecialists() {
                     </div>
                   </div>
 
-                  {/* Servicios del Especialista (Habilitar / Deshabilitar por Admin) */}
+                  {/* Servicios del Especialista (Pago por Servicio y Habilitar / Deshabilitar por Admin) */}
                   {Array.isArray(worker.services) && worker.services.length > 0 && (
                     <div className="space-y-2 pt-1">
                       <p className="text-[10px] font-bold text-[#555555] uppercase tracking-wider">
-                        Servicio del Especialista (Precio y duración definidos por {worker.first_name})
+                        Servicios de {worker.first_name} ({worker.services.length}) — Configura Pago Fijo ($) o % por cada servicio
                       </p>
-                      {worker.services.map((srv) => (
-                        <div
-                          key={srv.id}
-                          className={`p-3 rounded-2xl border flex items-center justify-between gap-2.5 ${
-                            srv.is_active
-                              ? 'bg-emerald-50/50 border-emerald-200'
-                              : 'bg-amber-50/60 border-amber-200'
-                          }`}
-                        >
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-xs font-bold text-[#2C0140] truncate">{srv.name}</span>
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                                srv.is_active
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-amber-200/80 text-amber-900'
-                              }`}>
-                                {srv.is_active ? <CheckCircle2 size={10} /> : <Clock size={10} />}
-                                {srv.is_active ? 'Habilitado' : 'Pendiente habilitar'}
-                              </span>
-                            </div>
-                            <p className="text-[11px] font-semibold text-[#4A008B] mt-0.5">
-                              ${Number(srv.price || 0).toLocaleString('es-CL')} • {srv.duration} min
-                            </p>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleToggleWorkerService(srv)}
-                            disabled={togglingServiceId === srv.id}
-                            className={`px-3 py-2 rounded-xl text-xs font-bold shrink-0 transition-all active:scale-95 ${
+                      {worker.services.map((srv) => {
+                        const isFixed = srv.payout_type === 'fixed'
+                        const workerPay = Number(srv.calculated_worker_pay || 0)
+                        const bizProfit = Number(srv.calculated_business_profit || 0)
+                        const srvRate = Number(srv.worker_commission_rate ?? worker.commission_rate ?? 60)
+                        return (
+                          <div
+                            key={srv.id}
+                            className={`p-3 rounded-2xl border space-y-2 ${
                               srv.is_active
-                                ? 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
-                                : 'bg-[#4A008B] text-white shadow-sm hover:bg-[#38006B]'
+                                ? 'bg-emerald-50/40 border-emerald-200'
+                                : 'bg-amber-50/60 border-amber-200'
                             }`}
                           >
-                            {togglingServiceId === srv.id
-                              ? '...'
-                              : srv.is_active
-                              ? 'Deshabilitar'
-                              : 'Habilitar Servicio'}
-                          </button>
-                        </div>
-                      ))}
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-xs font-bold text-[#2C0140] truncate">{srv.name}</span>
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                                    srv.is_active
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : 'bg-amber-200/80 text-amber-900'
+                                  }`}>
+                                    {srv.is_active ? <CheckCircle2 size={10} /> : <Clock size={10} />}
+                                    {srv.is_active ? 'Habilitado' : 'Pendiente habilitar'}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] font-bold text-[#4A008B] mt-0.5">
+                                  Precio Cliente: ${Number(srv.price || 0).toLocaleString('es-CL')} • {srv.duration} min
+                                </p>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleToggleWorkerService(srv)}
+                                disabled={togglingServiceId === srv.id}
+                                className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold shrink-0 transition-all active:scale-95 ${
+                                  srv.is_active
+                                    ? 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
+                                    : 'bg-[#4A008B] text-white shadow-sm hover:bg-[#38006B]'
+                                }`}
+                              >
+                                {togglingServiceId === srv.id
+                                  ? '...'
+                                  : srv.is_active
+                                  ? 'Deshabilitar'
+                                  : 'Habilitar'}
+                              </button>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-black/5">
+                              <div className="text-[10px] font-bold flex flex-wrap items-center gap-1.5">
+                                <span className="px-2 py-0.5 rounded-lg bg-[#2C0140] text-[#0AE8C6] inline-flex items-center gap-1">
+                                  {isFixed ? <DollarSign size={10} /> : <Percent size={10} />}
+                                  {isFixed
+                                    ? `Pago Fijo: $${workerPay.toLocaleString('es-CL')}`
+                                    : `Pago (${srvRate}%): $${workerPay.toLocaleString('es-CL')}`}
+                                </span>
+                                <span className="text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-lg">
+                                  Negocio: ${bizProfit.toLocaleString('es-CL')}
+                                </span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => openPayoutModal(srv, worker)}
+                                className="px-2.5 py-1 rounded-lg bg-[#F3E8FF] hover:bg-purple-200 text-[#4A008B] text-[10px] font-bold inline-flex items-center gap-1 shrink-0 transition-colors"
+                              >
+                                <Wallet size={11} />
+                                Configurar Pago ($ / %)
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
 
@@ -729,6 +822,193 @@ export default function AdminSpecialists() {
           </div>
         </div>
       )}
+
+      {/* Modal para Configurar Pago por Servicio (Monto Fijo $ o Porcentaje %) */}
+      {payoutModalService && (() => {
+        const srvPrice = Number(payoutModalService.price || 0)
+        const isFixed = payoutForm.payout_type === 'fixed'
+        const fixedPayVal = Math.min(srvPrice, Math.max(0, parseFloat(payoutForm.worker_fixed_pay || 0) || 0))
+        const ratePayVal = Math.min(100, Math.max(0, parseFloat(payoutForm.worker_commission_rate || 0) || 0))
+        const previewWorkerPay = isFixed ? fixedPayVal : Math.round((srvPrice * ratePayVal) / 100)
+        const previewBizProfit = Math.max(0, srvPrice - previewWorkerPay)
+
+        return (
+          <div className="fixed inset-0 bg-[#2C0140]/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
+              <div className="p-5 border-b border-[#ececec] flex items-center justify-between bg-[#F3E8FF]/30">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#4A008B]">
+                    Pago por Servicio • {payoutModalService.workerName}
+                  </span>
+                  <h2 className="text-base font-bold text-[#2C0140] font-tight mt-0.5">
+                    {payoutModalService.name}
+                  </h2>
+                  <p className="text-xs font-semibold text-[#555555]">
+                    Precio al cliente: ${srvPrice.toLocaleString('es-CL')} • {payoutModalService.duration} min
+                  </p>
+                </div>
+                <button
+                  onClick={() => setPayoutModalService(null)}
+                  className="p-2 text-gray-400 hover:bg-gray-100 rounded-full"
+                >
+                  <X size={19} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveServicePayout} className="p-5 space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#2C0140] uppercase tracking-wider mb-2">
+                    Modalidad de Pago para este Servicio
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPayoutForm({ ...payoutForm, payout_type: 'fixed' })}
+                      className={`p-3 rounded-2xl border text-left transition-all ${
+                        isFixed
+                          ? 'border-[#4A008B] bg-[#F3E8FF] text-[#2C0140] shadow-xs'
+                          : 'border-[#e6e6e6] bg-white text-[#555555]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-bold text-xs">
+                        <DollarSign size={15} className="text-[#4A008B]" />
+                        <span>Monto Fijo ($)</span>
+                      </div>
+                      <p className="text-[10px] text-[#555555] mt-1">
+                        Pago exacto en pesos por realizar este servicio
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPayoutForm({ ...payoutForm, payout_type: 'percentage' })}
+                      className={`p-3 rounded-2xl border text-left transition-all ${
+                        !isFixed
+                          ? 'border-[#4A008B] bg-[#F3E8FF] text-[#2C0140] shadow-xs'
+                          : 'border-[#e6e6e6] bg-white text-[#555555]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-bold text-xs">
+                        <Percent size={15} className="text-[#4A008B]" />
+                        <span>Porcentaje (%)</span>
+                      </div>
+                      <p className="text-[10px] text-[#555555] mt-1">
+                        Comisión porcentual sobre el valor del servicio
+                      </p>
+                    </button>
+                  </div>
+                </div>
+
+                {isFixed ? (
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-[#2C0140]">
+                      Monto Fijo a Pagar al Especialista ($)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max={srvPrice}
+                      step="500"
+                      required
+                      value={payoutForm.worker_fixed_pay}
+                      onChange={(e) => setPayoutForm({ ...payoutForm, worker_fixed_pay: e.target.value })}
+                      className="input-field text-sm font-bold"
+                      placeholder="Ej: 10000"
+                    />
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {[0.5, 0.6, 0.7, 0.8].map((ratio) => {
+                        const suggested = Math.round((srvPrice * ratio) / 500) * 500
+                        return (
+                          <button
+                            type="button"
+                            key={ratio}
+                            onClick={() => setPayoutForm({ ...payoutForm, worker_fixed_pay: String(suggested) })}
+                            className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-[#F3E8FF] text-[#2C0140] text-[10px] font-bold"
+                          >
+                            ${suggested.toLocaleString('es-CL')}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-[#2C0140]">
+                        Porcentaje para este Servicio (%)
+                      </label>
+                      <span className="text-base font-bold text-[#4A008B]">{ratePayVal}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="10"
+                      max="90"
+                      step="5"
+                      value={ratePayVal}
+                      onChange={(e) => setPayoutForm({ ...payoutForm, worker_commission_rate: e.target.value })}
+                      className="w-full accent-[#4A008B]"
+                    />
+                  </div>
+                )}
+
+                {/* Resumen de Reparto por este Servicio */}
+                <div className="bg-[#2C0140] text-white p-3.5 rounded-2xl space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-purple-200">Precio cobrado al cliente:</span>
+                    <span className="font-bold">${srvPrice.toLocaleString('es-CL')}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#0AE8C6] font-bold">
+                      Pago al Especialista ({isFixed ? 'Monto Fijo' : `${ratePayVal}%`}):
+                    </span>
+                    <span className="font-bold text-[#0AE8C6] text-sm">
+                      ${previewWorkerPay.toLocaleString('es-CL')}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-white/10">
+                    <span className="text-purple-200">Ganancia Beauty Hogar:</span>
+                    <span className="font-bold text-white">${previewBizProfit.toLocaleString('es-CL')}</span>
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2.5 text-xs font-bold text-[#2C0140] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={payoutForm.is_active}
+                    onChange={(e) => setPayoutForm({ ...payoutForm, is_active: e.target.checked })}
+                    className="w-4 h-4 accent-[#4A008B] rounded"
+                  />
+                  <span>Dejar servicio habilitado en el catálogo de clientes</span>
+                </label>
+
+                <div className="flex gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setPayoutModalService(null)}
+                    className="flex-1 py-2.5 border border-[#e6e6e6] rounded-xl font-bold text-xs text-[#555555]"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingPayout}
+                    className="flex-1 py-2.5 bg-[#4A008B] text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-md"
+                  >
+                    {savingPayout ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : (
+                      <>
+                        <CheckCircle2 size={15} className="text-[#0AE8C6]" />
+                        <span>Guardar Pago</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

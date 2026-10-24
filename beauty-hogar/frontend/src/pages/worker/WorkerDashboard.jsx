@@ -197,26 +197,34 @@ export default function WorkerDashboard() {
 
   const handleSaveService = async (e) => {
     e.preventDefault()
-    if (!editingService) return
     const priceValue = parseFloat(serviceForm.price)
     const durationValue = parseInt(serviceForm.duration, 10)
+    if (!serviceForm.name.trim()) {
+      return toast.error('Escribe el nombre del servicio (ej: Corte de Pelo, Lavado, etc.)')
+    }
     if (isNaN(priceValue) || priceValue <= 0 || isNaN(durationValue) || durationValue <= 0) {
       return toast.error('Ingresa un precio y duración válidos')
     }
     setSavingService(true)
     try {
       const payload = {
-        description: serviceForm.description.trim(),
+        name: serviceForm.name.trim(),
+        description: serviceForm.description.trim() || `Servicio profesional de ${serviceForm.name.trim()} a domicilio.`,
         price: priceValue,
         duration: durationValue
       }
-      await api.patch(`appointments/services/${editingService.id}/`, payload)
-      toast.success('¡Tu precio y duración de servicio fueron actualizados!')
+      if (editingService) {
+        await api.patch(`appointments/services/${editingService.id}/`, payload)
+        toast.success('¡Tu servicio, precio y duración fueron actualizados!')
+      } else {
+        await api.post('appointments/services/', payload)
+        toast.success('Servicio agregado. El Administrador fue notificado para definir tu pago y habilitarlo.')
+      }
       setSlotForm(prev => ({ ...prev, interval: String(durationValue) }))
       setShowServiceModal(false)
       fetchAllWorkerData()
     } catch (error) {
-      toast.error('No se pudo actualizar el precio y duración')
+      toast.error('No se pudo guardar el servicio')
     } finally {
       setSavingService(false)
     }
@@ -862,16 +870,25 @@ export default function WorkerDashboard() {
         </div>
       )}
 
-      {/* 5. SECCIÓN MI SERVICIO: PRECIO Y DURACIÓN */}
+      {/* 5. SECCIÓN MIS SERVICIOS: PRECIOS, DURACIÓN Y PAGO POR SERVICIO */}
       {activeSection === 'services' && (
         <div className="space-y-4">
-          <div className="bg-white rounded-3xl border border-[#e6e6e6] p-4 sm:p-5 space-y-1 shadow-xs">
-            <h2 className="text-base sm:text-lg font-bold text-[#2C0140] font-tight">
-              Mi Servicio: Precio y Duración
-            </h2>
-            <p className="text-xs text-[#555555]">
-              El Administrador habilita tu servicio en el catálogo y tú eliges <strong>cuánto cuesta ($)</strong> y <strong>cuánto demora (minutos)</strong>.
-            </p>
+          <div className="bg-white rounded-3xl border border-[#e6e6e6] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-[#2C0140] font-tight">
+                Mis Servicios, Precios y Duración
+              </h2>
+              <p className="text-xs text-[#555555] mt-0.5">
+                Agrega todos tus tratamientos (ej. Corte de pelo, Lavado, Brushing, Tintura) con su precio y tiempo. El Administrador define tu pago por cada servicio y lo habilita.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={openNewServiceModal}
+              className="px-4 py-2.5 bg-[#4A008B] hover:bg-[#38006B] text-white rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm shrink-0 active:scale-95 transition-transform"
+            >
+              <Plus size={15} /> Agregar Otro Servicio
+            </button>
           </div>
 
           {myServices.length === 0 ? (
@@ -880,28 +897,42 @@ export default function WorkerDashboard() {
                 <Scissors size={22} />
               </div>
               <div>
-                <p className="text-sm font-bold text-[#2C0140]">El Administrador aún no te ha asignado un servicio</p>
+                <p className="text-sm font-bold text-[#2C0140]">Aún no tienes servicios registrados</p>
                 <p className="text-xs text-[#555555] mt-1 max-w-sm mx-auto">
-                  Solicita al Administrador que habilite tu servicio en la sección de Especialistas o Catálogo.
+                  Agrega tus servicios con su precio y duración para que el Administrador los habilite.
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={openNewServiceModal}
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-[#4A008B] text-white rounded-xl text-xs font-bold"
+              >
+                <Plus size={15} /> Agregar Mi Primer Servicio
+              </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {myServices.map((srv) => {
                 const priceNum = Number(srv.price || 0)
-                const myCut = Math.round((priceNum * commissionRate) / 100)
+                const isFixedPayout = srv.payout_type === 'fixed' && Number(srv.worker_fixed_pay || 0) > 0
+                const srvRate = Number(srv.worker_commission_rate ?? commissionRate)
+                const myCut = srv.calculated_worker_pay != null
+                  ? Math.round(Number(srv.calculated_worker_pay))
+                  : isFixedPayout
+                  ? Math.round(Number(srv.worker_fixed_pay))
+                  : Math.round((priceNum * srvRate) / 100)
+
                 return (
                   <div
                     key={srv.id}
-                    className="bg-white rounded-3xl border border-[#e6e6e6] p-5 space-y-4 shadow-xs"
+                    className="bg-white rounded-3xl border border-[#e6e6e6] p-5 space-y-4 shadow-xs flex flex-col justify-between"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div className="w-12 h-12 rounded-2xl bg-[#F3E8FF] text-[#4A008B] flex items-center justify-center shrink-0">
-                          <Scissors size={22} />
+                          <Scissors size={21} strokeWidth={1.75} />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <span
                               className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
@@ -912,35 +943,43 @@ export default function WorkerDashboard() {
                             >
                               {srv.is_active ? <CheckCircle2 size={11} /> : <Clock size={11} />}
                               {srv.is_active
-                                ? 'Habilitado por Admin en Catálogo'
-                                : 'Pendiente que el Admin lo habilite'}
+                                ? 'Habilitado en Catálogo'
+                                : 'Pendiente Habilitación Admin'}
                             </span>
                           </div>
-                          <h3 className="text-base font-bold text-[#2C0140] leading-snug">{srv.name}</h3>
-                          <p className="text-xs text-[#555555] mt-0.5">{srv.description}</p>
+                          <h3 className="text-base font-bold text-[#2C0140] leading-snug truncate">{srv.name}</h3>
+                          <p className="text-xs text-[#555555] mt-0.5 line-clamp-2">{srv.description}</p>
                         </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteService(srv.id)}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-xl shrink-0"
+                        title="Eliminar servicio"
+                      >
+                        <Trash2 size={15} />
+                      </button>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2.5 bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
                       <div>
-                        <p className="text-[10px] font-bold text-[#555555] uppercase">Costo de tu Servicio</p>
-                        <p className="text-lg font-bold text-[#2C0140] font-tight">
+                        <p className="text-[10px] font-bold text-[#555555] uppercase">Precio Cliente</p>
+                        <p className="text-base sm:text-lg font-bold text-[#2C0140] font-tight">
                           ${priceNum.toLocaleString('es-CL')}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold text-[#555555] uppercase">Cuánto Demora</p>
-                        <p className="text-lg font-bold text-[#2C0140] font-tight flex items-center gap-1">
-                          <Clock size={15} className="text-[#0AE8C6]" />
-                          {srv.duration} min
+                        <p className="text-[10px] font-bold text-[#555555] uppercase">Duración</p>
+                        <p className="text-base sm:text-lg font-bold text-[#2C0140] font-tight flex items-center gap-1">
+                          <Clock size={14} className="text-[#0AE8C6]" />
+                          {srv.duration}m
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-bold text-[#4A008B] uppercase">
-                          Tu Comisión ({commissionRate}%)
+                          {isFixedPayout ? 'Tu Pago Fijo' : `Tu Pago (${srvRate}%)`}
                         </p>
-                        <p className="text-lg font-bold text-[#4A008B] font-tight">
+                        <p className="text-base sm:text-lg font-bold text-[#4A008B] font-tight">
                           +${myCut.toLocaleString('es-CL')}
                         </p>
                       </div>
@@ -951,7 +990,7 @@ export default function WorkerDashboard() {
                       onClick={() => openEditServiceModal(srv)}
                       className="w-full py-3 bg-[#4A008B] hover:bg-[#38006B] text-white rounded-2xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm active:scale-98 transition-transform"
                     >
-                      <Edit2 size={15} /> Configurar Cuánto Cuesta y Cuánto Demora
+                      <Edit2 size={15} /> Editar Precio y Duración
                     </button>
                   </div>
                 )
@@ -961,18 +1000,20 @@ export default function WorkerDashboard() {
         </div>
       )}
 
-      {/* Modal para que el Especialista elija cuánto cuesta y cuánto demora su servicio */}
+      {/* Modal para que el Especialista agregue o edite sus servicios (ej. Corte, Lavado, etc.) con precio y duración */}
       {showServiceModal && (
         <div className="fixed inset-0 z-50 bg-[#2C0140]/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-[#e6e6e6]">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-[#e6e6e6] max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Scissors size={18} className="text-[#4A008B]" />
                 <div>
                   <h2 className="text-base font-bold text-[#2C0140]">
-                    Configurar Precio y Duración
+                    {editingService ? 'Configurar Precio y Duración' : 'Agregar Nuevo Servicio'}
                   </h2>
-                  <p className="text-[11px] font-semibold text-[#4A008B]">{serviceForm.name}</p>
+                  <p className="text-[11px] font-semibold text-[#4A008B]">
+                    {editingService ? serviceForm.name : 'Cada servicio tiene su propio valor y tiempo'}
+                  </p>
                 </div>
               </div>
               <button
@@ -986,7 +1027,49 @@ export default function WorkerDashboard() {
             <form onSubmit={handleSaveService} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-[#2C0140] mb-1.5">
-                  1. ¿Cuánto va a costar tu servicio? ($ CLP)
+                  1. Nombre del Servicio
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={serviceForm.name}
+                  onChange={(e) => setServiceForm({ ...serviceForm, name: e.target.value })}
+                  placeholder="Ej: Corte de Pelo, Lavado Capilar, Brushing..."
+                  className="input-field text-sm font-bold text-[#2C0140]"
+                />
+                {!editingService && (
+                  <div className="flex gap-1.5 flex-wrap mt-2">
+                    {[
+                      { name: 'Corte de Pelo', price: '18000', duration: '45' },
+                      { name: 'Lavado y Secado Capilar', price: '10000', duration: '30' },
+                      { name: 'Brushing y Peinado', price: '15000', duration: '45' },
+                      { name: 'Tintura / Coloración', price: '32000', duration: '90' },
+                      { name: 'Corte + Barba', price: '20000', duration: '60' },
+                      { name: 'Manicure Permanente', price: '16000', duration: '60' }
+                    ].map((sug) => (
+                      <button
+                        type="button"
+                        key={sug.name}
+                        onClick={() =>
+                          setServiceForm({
+                            ...serviceForm,
+                            name: sug.name,
+                            price: sug.price,
+                            duration: sug.duration
+                          })
+                        }
+                        className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-[#F3E8FF]/60 text-[#4A008B] border border-purple-200 hover:bg-[#F3E8FF]"
+                      >
+                        + {sug.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#2C0140] mb-1.5">
+                  2. ¿Cuánto va a costar este servicio? ($ CLP)
                 </label>
                 <input
                   type="number"
@@ -999,7 +1082,7 @@ export default function WorkerDashboard() {
                   className="input-field text-base font-bold text-[#2C0140]"
                 />
                 <div className="flex gap-1.5 flex-wrap mt-2">
-                  {[12000, 15000, 18000, 22000, 25000, 30000].map((preset) => (
+                  {[8000, 10000, 12000, 15000, 18000, 25000, 35000].map((preset) => (
                     <button
                       type="button"
                       key={preset}
@@ -1018,7 +1101,7 @@ export default function WorkerDashboard() {
 
               <div>
                 <label className="block text-xs font-bold text-[#2C0140] mb-1.5">
-                  2. ¿Cuánto demora tu servicio? (Minutos)
+                  3. ¿Cuánto demora este servicio? (Minutos)
                 </label>
                 <div className="grid grid-cols-5 gap-1.5 mb-2">
                   {[30, 45, 60, 90, 120].map((mins) => (
@@ -1065,10 +1148,16 @@ export default function WorkerDashboard() {
               {Number(serviceForm.price) > 0 && (
                 <div className="bg-[#F3E8FF]/60 border border-purple-200 rounded-2xl p-3 flex items-center justify-between">
                   <span className="text-xs font-bold text-[#2C0140]">
-                    Tu ganancia neta ({commissionRate}%):
+                    {editingService?.payout_type === 'fixed' && Number(editingService?.worker_fixed_pay) > 0
+                      ? 'Tu pago fijo acordado en este servicio:'
+                      : `Tu ganancia estimada (${Number(editingService?.worker_commission_rate ?? commissionRate)}%):`}
                   </span>
                   <span className="text-base font-bold text-[#4A008B]">
-                    ${Math.round((Number(serviceForm.price) * commissionRate) / 100).toLocaleString('es-CL')}
+                    ${(
+                      editingService?.payout_type === 'fixed' && Number(editingService?.worker_fixed_pay) > 0
+                        ? Math.round(Number(editingService.worker_fixed_pay))
+                        : Math.round((Number(serviceForm.price) * Number(editingService?.worker_commission_rate ?? commissionRate)) / 100)
+                    ).toLocaleString('es-CL')}
                   </span>
                 </div>
               )}
@@ -1086,7 +1175,7 @@ export default function WorkerDashboard() {
                   disabled={savingService}
                   className="flex-1 py-3 rounded-xl bg-[#4A008B] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md"
                 >
-                  {savingService ? <Loader2 size={15} className="animate-spin" /> : 'Guardar Precio y Duración'}
+                  {savingService ? <Loader2 size={15} className="animate-spin" /> : 'Guardar Servicio'}
                 </button>
               </div>
             </form>

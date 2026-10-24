@@ -90,7 +90,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
         if user.is_authenticated and mine == '1':
             return qs.filter(provider=user)
 
-        if user.is_authenticated and user.role == 'worker' and self.action in ['update', 'partial_update']:
+        if user.is_authenticated and user.role == 'worker' and self.action in ['update', 'partial_update', 'destroy']:
             return qs.filter(provider=user)
 
         if user.is_authenticated and (user.role == 'admin' or user.is_admin):
@@ -98,20 +98,34 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
         return qs.filter(is_active=True, provider__is_active=True)
 
-    def _notify_worker_service_status(self, service, is_new=False):
-        """Notifica en la campana y en tiempo real por WebSocket al especialista cuando su servicio es habilitado o deshabilitado."""
+    def _notify_worker_service_status(self, service, is_new=False, payout_changed=False):
+        """Notifica en la campana y en tiempo real por WebSocket al especialista cuando su servicio es habilitado/deshabilitado o se define su pago."""
         provider = service.provider
         if not provider or provider.role != 'worker':
             return
 
         price_fmt = f"${int(service.price):,}".replace(",", ".")
+        pay_fmt = f"${int(service.calculated_worker_pay):,}".replace(",", ".")
+        pay_label = (
+            f"{pay_fmt} (Monto fijo)"
+            if service.payout_type == 'fixed'
+            else f"{pay_fmt} ({int(service.worker_commission_rate)}%)"
+        )
+
         if service.is_active:
             msg = (
-                f"¡Tu servicio '{service.name}' fue HABILITADO por el Administrador! "
-                f"Ya aparece en el catálogo de clientes ({price_fmt} • {service.duration} min)."
+                f"¡Tu servicio '{service.name}' ({price_fmt}) está HABILITADO! "
+                f"Tu pago acordado por cada atención de este servicio es de {pay_label}."
             )
             ws_status = "confirmed"
-            title = "Servicio Habilitado"
+            title = "Servicio Habilitado y Pago Definido"
+        elif payout_changed:
+            msg = (
+                f"El Administrador definió tu pago para el servicio '{service.name}': "
+                f"recibirás {pay_label} por cada atención."
+            )
+            ws_status = "confirmed"
+            title = "Pago por Servicio Configurado"
         else:
             msg = (
                 f"Tu servicio '{service.name}' fue DESHABILITADO del catálogo de clientes por el Administrador."
@@ -137,7 +151,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
         })
 
         # También notificar por WebSocket a los clientes activos cuando se habilita un nuevo servicio de especialista
-        if service.is_active:
+        if service.is_active and not payout_changed:
             client_msg = (
                 f"Nuevo servicio disponible: '{service.name}' con {provider.full_name} "
                 f"({provider.specialty_display}) por {price_fmt}."
@@ -162,6 +176,34 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user
+        # Si quien crea el servicio es el propio Especialista (ej: Corte de Pelo, Lavado de Pelo, etc.)
+        if user.role == 'worker' and not user.is_admin:
+            service = serializer.save(
+                provider=user,
+                is_active=False,  # El Administrador debe habilitarlo y definir/confirmar su pago
+                payout_type='percentage',
+                worker_commission_rate=user.commission_rate or Decimal('60.00'),
+                worker_fixed_pay=Decimal('0.00')
+            )
+            price_fmt = f"${int(service.price):,}".replace(",", ".")
+            admin_msg = (
+                f"{user.full_name} ({user.specialty_display}) agregó un nuevo servicio: "
+                f"'{service.name}' ({price_fmt} • {service.duration} min). Pendiente definir su pago y habilitarlo."
+            )
+            for adm in User.objects.filter(Q(role='admin') | Q(is_admin=True), is_active=True):
+                Notification.objects.create(user=adm, appointment=None, message=admin_msg)
+                send_appointment_notification(adm.id, {
+                    "id": service.id,
+                    "service_id": service.id,
+                    "event_type": "worker_service_created",
+                    "target_path": "/admin/specialists",
+                    "title": "Nuevo Servicio por Habilitar",
+                    "message": admin_msg,
+                    "status": "confirmed",
+                    "is_new": True
+                })
+            return
+
         provider_id = self.request.data.get('provider_id')
         target_provider = user
         if (user.role == 'admin' or user.is_admin) and provider_id:
@@ -177,13 +219,18 @@ class ServiceViewSet(viewsets.ModelViewSet):
         user = self.request.user
         instance = self.get_object()
         old_is_active = instance.is_active
+        old_payout_type = instance.payout_type
+        old_fixed_pay = instance.worker_fixed_pay
+        old_comm_rate = instance.worker_commission_rate
 
-        # Si es especialista (worker), solo puede modificar el precio, duración y descripción de su servicio
+        # Si es especialista (worker), puede modificar nombre, descripción, precio y duración, pero NO su pago ni habilitarlo
         if user.role == 'worker' and not user.is_admin:
             updated = serializer.save(
                 provider=instance.provider,
-                name=instance.name,
-                is_active=instance.is_active
+                is_active=instance.is_active,
+                payout_type=instance.payout_type,
+                worker_commission_rate=instance.worker_commission_rate,
+                worker_fixed_pay=instance.worker_fixed_pay
             )
             price_fmt = f"${int(updated.price):,}".replace(",", ".")
             admin_msg = (
@@ -213,13 +260,20 @@ class ServiceViewSet(viewsets.ModelViewSet):
                 target_provider = instance.provider
 
         updated = serializer.save(provider=target_provider)
-        if old_is_active != updated.is_active and updated.provider.role == 'worker':
-            self._notify_worker_service_status(updated, is_new=False)
+        payout_changed = (
+            old_payout_type != updated.payout_type
+            or old_fixed_pay != updated.worker_fixed_pay
+            or old_comm_rate != updated.worker_commission_rate
+        )
+        if updated.provider.role == 'worker' and (old_is_active != updated.is_active or payout_changed):
+            self._notify_worker_service_status(
+                updated,
+                is_new=False,
+                payout_changed=(payout_changed and old_is_active == updated.is_active)
+            )
 
     def get_permissions(self):
-        if self.action in ['create', 'destroy']:
-            return [IsAdminUser()]
-        if self.action in ['update', 'partial_update']:
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsProfessionalUser()]
         return [permissions.AllowAny()]
 
