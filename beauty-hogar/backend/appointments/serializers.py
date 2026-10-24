@@ -7,12 +7,17 @@ class ServiceSerializer(serializers.ModelSerializer):
     provider_email = serializers.EmailField(source='provider.email', read_only=True)
     provider_name = serializers.CharField(source='provider.full_name', read_only=True)
     provider_specialty = serializers.SerializerMethodField()
+    calculated_worker_pay = serializers.SerializerMethodField()
+    calculated_business_profit = serializers.SerializerMethodField()
 
     class Meta:
         model = Service
         fields = [
             'id', 'provider', 'provider_email', 'provider_name', 'provider_specialty',
-            'name', 'description', 'duration', 'price', 'is_active', 'image'
+            'name', 'description', 'duration', 'price',
+            'payout_type', 'worker_commission_rate', 'worker_fixed_pay',
+            'calculated_worker_pay', 'calculated_business_profit',
+            'is_active', 'image'
         ]
         read_only_fields = ['provider']
 
@@ -22,6 +27,12 @@ class ServiceSerializer(serializers.ModelSerializer):
         if obj.provider.role == 'worker':
             return obj.provider.specialty_display
         return 'Especialista Principal'
+
+    def get_calculated_worker_pay(self, obj):
+        return float(obj.calculated_worker_pay)
+
+    def get_calculated_business_profit(self, obj):
+        return float(obj.calculated_business_profit)
 
 class TimeSlotSerializer(serializers.ModelSerializer):
     provider_name = serializers.CharField(source='provider.full_name', read_only=True)
